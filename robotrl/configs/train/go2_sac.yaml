@@ -1,0 +1,41 @@
+# Go2 速度跟踪 · SAC 训练预设（PPO 的对照组，配对文件是 go2_velocity.yaml）
+#
+# SAC 是异策略算法，对样本的用法和 PPO 完全不同：PPO 每批数据用完就扔，SAC 把
+# 每一步都存进回放池反复利用。这一点决定了下面两处规模差异——总步数预算保持
+# 一致（公平对照），但并行环境数和起步阶段的长度按异策略的方式重排。
+
+env:
+  robot: go2
+  task: velocity
+
+obs:
+  num_feet: 4
+
+events:
+  push_interval_steps: [150, 300]
+  base_mass_delta: [-0.5, 1.5]
+
+# 奖励只写偏离项，其余沿用任务默认权重（robotrl/envs/tasks/velocity.py）。
+reward:
+  scales:
+    base_height: -5.0
+
+train:
+  algo: sac
+  # 回放池要的是样本多样性，不是并行度。开 128 个进程只会把 CPU 花在采样上，
+  # 而这些样本对 SAC 来说远不如同策略算法那么"必须新鲜"。
+  num_envs: 32
+  vec_backend: subprocess
+  # 与 go2_velocity.yaml 相同的总步数预算。
+  total_timesteps: 30_000_000
+  run_dir: runs/go2_sac
+  eval_interval: 100
+  save_interval: 100
+
+sac:
+  # 起步阶段先纯随机采 2 万步。默认的 5000 步在 30M 的总预算里只占千分之一，
+  # 回放池里全是同一种早期分布，Q 函数很容易在它上面过拟合。
+  learning_starts: 20_000
+  # 批量放大到 512。SAC 的梯度噪声主要来自 Q 函数的自举，批量太小会明显发散；
+  # 异策略本来就不缺样本，多取一批几乎不增加采样成本。
+  batch_size: 512

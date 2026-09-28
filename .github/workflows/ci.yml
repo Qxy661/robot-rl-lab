@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同一分支上堆着的旧运行没有意义：CI 的价值是尽快给出反馈，
+# 新提交一推上来，等着的旧运行就该让位。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      # 一个 Python 版本挂了不连坐其余版本——三种版本下的结果同样有信息量，
+      # 尤其是"只在 3.12 上挂"这类问题，靠的就是它们各自跑完。
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          # 缓存的键取自 pyproject.toml：依赖变了缓存自动失效，不用手改版本号。
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # CPU 版 torch 必须单独先装，且要在装项目依赖之前。
+      # 项目依赖里写的是 torch>=2.1，PyPI 上的默认 wheel 带一整套 CUDA 运行时，
+      # 下载几个 GB，而 CI 里没有 GPU、测试也不碰 CUDA——白等十几分钟还占满缓存。
+      # 先装好 CPU 版，pip 后面看到约束已被满足就不会再装那个大的。
+      - name: 安装 CPU 版 torch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      # deploy extra 必须一起装。少了它，tests/test_deploy.py 会被 importorskip
+      # 整体跳过——CI 照样绿灯，但导出、量化、基准、回测这条本项目的核心链路
+      # 一次都没验证过。绿灯如果不是"跑过且通过"，就没有意义。
+      - name: 安装项目与开发依赖
+        run: python -m pip install -e ".[dev,deploy]"
+
+      - name: 代码检查
+        run: ruff check .
+
+      - name: 测试
+        run: pytest -m "not slow"
+        env:
+          PYTHONIOENCODING: utf-8
+
+# 关于 slow 用例
+# --------------
+# 标了 @pytest.mark.slow 的用例要加载 MuJoCo Menagerie 的机器人模型：模型不随
+# 仓库分发（见 .gitignore），得先跑 scripts/fetch_assets.py 从网上拉几百 MB。
+# 放在默认的 CI 里有两个问题：一是慢，每条矩阵分支都要重新下载；二是脆，网络
+# 抖一下就是红灯，而这个红灯指向的是一次下载失败，不是代码里的 bug——一个经常
+# 因为无关原因变红的 CI，很快就会被所有人忽略。
+#
+# 所以默认只跑不需要外部资源的用例（契约、配置、评估、toy 环境），它们覆盖了
+# 各层的逻辑正确性。要跑完整套，本地先 fetch_assets.py，然后：
+#
+#     pytest -m slow

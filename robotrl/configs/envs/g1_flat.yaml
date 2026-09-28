@@ -1,0 +1,22 @@
+# G1 平地速度跟踪（人形，15 个受控关节：腿 12 + 腰 3）
+#
+# 只写与默认值不同的项，默认值见 robotrl/configs/schema.py。
+# 下面这些与默认值一致，因此不重复写：
+#   env.robot=g1、env.task=velocity、terrain.kind=flat、obs.num_feet=2（双足）、
+#   env.control_dt=0.02（50Hz）、env.max_episode_steps=1000（20 秒）。
+#
+# 奖励只写偏离项。RewardConfig.scales 里没写的项沿用任务给的默认权重
+# （见 robotrl/envs/tasks/velocity.py 的 _DEFAULT_REWARD_SCALES 与
+# reward_manager.py 里"显式配置优先、缺省用任务默认"的优先级约定），
+# 全抄一遍会变成两处维护，改一处忘一处。
+
+events:
+  # 人形被推之后的恢复要花更长时间（重心高、支撑面窄）。推得太密，回报里大半
+  # 是"正在恢复"的片段，跟踪信号反而被稀释。间隔比默认的 200~400 步放宽。
+  push_interval_steps: [250, 500]
+
+reward:
+  scales:
+    # 站高保持。人形比四足高一倍多，"蹲着挪"这个退化解能蹲掉的绝对高度更多，
+    # 而跟踪项照样拿得到分，所以罚得比任务默认的 -10.0 更重。
+    base_height: -15.0

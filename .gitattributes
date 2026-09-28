@@ -1,0 +1,15 @@
+# 行尾统一成 LF 存进仓库。
+#
+# 开发机是 Windows、部署和 CI 多半在 Linux，两边行尾不一致会污染 diff——改一行
+# 代码却显示整个文件被改写。`text=auto` 让 git 按内容判断文本文件并在入库时归一化，
+# 工作区怎么检出仍由各自的 core.autocrlf 决定，不强制改变本地习惯。
+* text=auto
+
+# 二进制文件不参与行尾转换，否则文件会被改坏。
+*.onnx binary
+*.pt binary
+*.pth binary
+*.npz binary
+*.png binary
+*.jpg binary
+*.pdf binary

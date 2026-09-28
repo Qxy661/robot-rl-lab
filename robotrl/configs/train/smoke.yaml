@@ -1,0 +1,42 @@
+# 冒烟预设：几十秒跑完一次训练，用于 CI 和改完代码后的自检。
+#
+# 它回答的问题不是"策略学得好不好"，而是"整条链路还通不通"——采样、优势估计、
+# 更新、评估、存档，任何一环写崩了这里都会立刻报错。所以规模刻意压到最小，
+# 奖励和曲线好不好看完全不在考虑范围内。
+#
+# 用 toy 环境（质点速度跟踪）而不是真机形态：它不依赖 MuJoCo，不用下载
+# Menagerie 模型，CI 里几十秒能跑完。toy 在注册表里以裸名 "toy" 注册
+# （见 robotrl/envs/toy.py），构造方式是 make("toy", config=cfg)；
+# 这里的 task 字段只用于日志和报告里的命名。
+#
+# 注意 reward 段是故意留空的：toy 的奖励是解析式（ToyVelocityEnv._reward），
+# 不经过 reward 配置。权重全为 0 也能跑通，正好顺带验证了"奖励项全关时管线
+# 不会崩"这条边界。
+
+env:
+  robot: toy
+  task: velocity
+  # 一个回合 60 步 × 0.05 秒 = 3 秒。冒烟要的是回合尽快结束、尽快进入复位分支，
+  # 复位路径上出问题（比如指令没重采样）只有多跑几个回合才暴露得出来。
+  max_episode_steps: 60
+  control_dt: 0.05
+
+obs:
+  # 关掉观测噪声。冒烟看的是"跑得通"，噪声只会让日志里的数更难辨认。
+  use_obs_noise: false
+
+train:
+  algo: ppo
+  # 8 个环境 × 16 步 × 若干轮迭代，总量控制在万步以内。
+  num_envs: 8
+  total_timesteps: 4_000
+  run_dir: runs/smoke
+  # 评估与存档都调到最密，保证 CI 能覆盖到这两条分支。
+  eval_interval: 2
+  save_interval: 2
+
+ppo:
+  # 每个环境每次迭代只采 16 步，迭代次数多一点，日志能多看几行。
+  num_steps_per_env: 16
+  num_learning_epochs: 2
+  num_mini_batches: 2

@@ -1,0 +1,40 @@
+# G1 速度跟踪 · PPO 训练预设
+#
+# 配置加载器只吃一个文件、不做 include（见 robotrl/utils/config.py），所以这份
+# 预设把一次训练要用的东西都写在了一起：环境段与 configs/envs/g1_flat.yaml 内容
+# 一致，训练段是本文件独有的。改环境参数时两处都要改——这是当前加载方式的代价，
+# 换来的是 `python scripts/train.py --config <本文件>` 一条命令就能跑起来。
+#
+# 规模按"纯 CPU + 多进程"给：MuJoCo 的单步无法用多线程加速，并行只能靠多开环境
+# 实例，所以 num_envs 与核数基本同量级，而不是 GPU 上的几千。
+
+env:
+  robot: g1
+  task: velocity
+
+events:
+  push_interval_steps: [250, 500]
+
+# 奖励只写偏离项，其余沿用任务默认权重（robotrl/envs/tasks/velocity.py）。
+reward:
+  scales:
+    base_height: -15.0
+
+train:
+  algo: ppo
+  num_envs: 64
+  # 纯 CPU 上唯一能拿到的加速就是多进程——MuJoCo 单步无法多线程化。
+  vec_backend: subprocess
+  total_timesteps: 20_000_000
+  run_dir: runs/g1_velocity
+  # 评估一次要跑满若干个完整回合（每个 1000 步），是训练循环里最贵的非训练开销。
+  # 默认的 50 轮一评在人形上会吃掉几个百分点的总时间，隔 100 轮足够看出曲线趋势。
+  eval_interval: 100
+  save_interval: 100
+
+ppo:
+  # 人形的价值函数比四足难拟合得多，训练中 KL 冲高的频率也高。actor 学习率降到
+  # 1e-4；critic 保持 1e-3 不动——两者的拟合难度本来就不一样，没必要一起降。
+  lr_actor: 1.0e-4
+  # 一个 mini batch 里的有效样本本来就少，切细一点能让每次更新的梯度更稳。
+  num_mini_batches: 8

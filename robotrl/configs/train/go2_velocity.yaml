@@ -1,0 +1,38 @@
+# Go2 速度跟踪 · PPO 训练预设
+#
+# 自包含（配置加载器不做 include），环境段与 configs/envs/go2_flat.yaml 一致。
+# 这份预设同时是 go2_sac.yaml 的对照组：除了算法本身，其余项两边刻意保持一致，
+# 否则跑出来的差异说不清是算法造成的还是配置造成的。
+
+env:
+  robot: go2
+  task: velocity
+
+obs:
+  num_feet: 4
+
+events:
+  push_interval_steps: [150, 300]
+  base_mass_delta: [-0.5, 1.5]
+
+# 奖励只写偏离项，其余沿用任务默认权重（robotrl/envs/tasks/velocity.py）。
+reward:
+  scales:
+    base_height: -5.0
+
+train:
+  algo: ppo
+  # 四足单步比人形便宜，同样的墙钟时间里可以多开一倍环境。
+  num_envs: 128
+  vec_backend: subprocess
+  # 与 go2_sac.yaml 相同的总步数预算。PPO 与 SAC 的对照必须在同一预算下看，
+  # 各自跑到"自己最好"再比，比的是调参耐心而不是算法。
+  total_timesteps: 30_000_000
+  run_dir: runs/go2_velocity
+  eval_interval: 100
+  save_interval: 100
+
+# PPO 超参全部沿用默认值，因此不重复写：默认值对齐论文与主流实现
+# （见 robotrl/configs/schema.py 的 PPOConfig），四足速度跟踪没有需要偏离的已知
+# 理由。要试改动，用命令行覆写即可，不必改这份文件：
+#     python scripts/train.py --config <本文件> --set ppo.lr_actor=1e-4

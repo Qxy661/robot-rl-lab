@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robotrl"
+version = "0.1.0"
+description = "机器人强化学习全栈框架：MuJoCo 仿真 → 从零 PPO/SAC → ONNX 量化 → 端侧部署回测"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.1",
+    "mujoco>=3.1",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+# 部署工具链。虽然量化回测是本项目的核心卖点，但仍单独分组，
+# 因为纯训练场景（例如在无 onnxruntime 的服务器上跑大规模训练）不需要它。
+deploy = [
+    "onnx>=1.15",
+    "onnxruntime>=1.17",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "tensorboard>=2.15",
+]
+
+[project.urls]
+Homepage = "https://github.com/Qxy661/robot-rl-lab"
+Source = "https://github.com/Qxy661/robot-rl-lab"
+
+[tool.setuptools.packages.find]
+include = ["robotrl*"]
+
+# ---------------------------------------------------------------------------
+# 代码检查
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# assets/menagerie 是 scripts/fetch_assets.py 抓下来的第三方仓库（MuJoCo Menagerie，
+# BSD-3），不属于本项目源码。lint 别人的代码只会制造噪音——写它的人不归我们管，
+# 我们也不会去改。robotrl/assets/ 是我们自己的物理层，照常检查。
+exclude = [".venv", "runs", "exported", "assets/menagerie"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # 行长交给 formatter，中文注释按字符数算不准确
+    # 抽象基类里的空方法。本项目的管线钩子刻意给空默认实现（比如 _update_command），
+    # 让子类只覆盖自己需要的那几段，而不是被迫实现一堆 pass。这是设计选择不是疏漏。
+    "B027",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N806", "N803"]   # 测试里用大写变量名表示张量形状，可读性更好
+
+[tool.ruff.lint.isort]
+known-first-party = ["robotrl"]
+
+# ---------------------------------------------------------------------------
+# 测试
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: 需要真实训练或加载 MuJoCo 模型的用例，默认跳过（用 -m slow 运行）",
+    "gpu: 需要 GPU",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:mujoco.*",
+]
