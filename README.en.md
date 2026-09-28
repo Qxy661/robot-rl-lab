@@ -28,7 +28,7 @@ what is missing:
 
 | Part | Status | Notes |
 | --- | --- | --- |
-| train → export → quantize → benchmark → backtest | Verified | Toy task (no MuJoCo) runs end to end in minutes; CI runs all 412 tests on every commit |
+| train → export → quantize → benchmark → backtest | Verified | Toy task (no MuJoCo) runs end to end in minutes; CI runs the default suite every commit: 412 selected, 411 pass, 1 skips |
 | PPO / SAC from scratch | Verified | 49 tests covering GAE, ratio clipping, the tanh correction, target networks, entropy temperature |
 | G1 / H1 / Go2 morphologies | Verified | One `env.robot` field to switch; terrain sampling and joint mapping are under test |
 | Quantization backtest and KL gate | Verified | 20 paired episodes; a drifted action distribution is reported as a failure, not smoothed over |
@@ -40,6 +40,11 @@ what is missing:
 Read the two numbers together: **8448 steps is not 20 million**. The performance
 figures below are evidence that the pipeline reproduces, not that the policy is
 any good.
+
+The one test CI skips is `test_model_path_points_into_menagerie`: it only checks
+the path rule, but by design it is gated on Menagerie being fetched (see
+`needs_models` in `tests/test_loader.py`). Run `scripts/fetch_assets.py` locally
+and all 412 pass.
 
 ## What this project addresses
 
