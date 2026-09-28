@@ -58,8 +58,11 @@ jobs:
       - name: 代码检查
         run: ruff check .
 
+      # -rs 把跳过原因打进日志。跳过有两种：一种是"这台机器上没有这个资源"，
+      # 属正常；另一种是"这台机器上的运行时算得不对"，属已知缺陷（见 docs/07）。
+      # 两者都以绿灯收场，所以理由必须写出来，否则没法从日志里区分。
       - name: 测试
-        run: pytest -m "not slow"
+        run: pytest -m "not slow" -rs
         env:
           PYTHONIOENCODING: utf-8
 

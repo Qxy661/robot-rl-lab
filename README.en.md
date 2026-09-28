@@ -28,7 +28,7 @@ what is missing:
 
 | Part | Status | Notes |
 | --- | --- | --- |
-| train → export → quantize → benchmark → backtest | Verified | Toy task (no MuJoCo) runs end to end in minutes; CI runs the default suite every commit: 412 selected, 411 pass, 1 skips |
+| train → export → quantize → benchmark → backtest | Verified | Toy task (no MuJoCo) runs end to end in minutes; CI runs the default suite every commit: 413 selected, 1 skips by design |
 | PPO / SAC from scratch | Verified | 49 tests covering GAE, ratio clipping, the tanh correction, target networks, entropy temperature |
 | G1 / H1 / Go2 morphologies | Verified | One `env.robot` field to switch; terrain sampling and joint mapping are under test |
 | Quantization backtest and KL gate | Verified | 20 paired episodes; a drifted action distribution is reported as a failure, not smoothed over |
@@ -41,10 +41,18 @@ Read the two numbers together: **8448 steps is not 20 million**. The performance
 figures below are evidence that the pipeline reproduces, not that the policy is
 any good.
 
-The one test CI skips is `test_model_path_points_into_menagerie`: it only checks
-the path rule, but by design it is gated on Menagerie being fetched (see
+The one test CI skips by design is `test_model_path_points_into_menagerie`: it
+only checks the path rule, but it is gated on Menagerie being fetched (see
 `needs_models` in `tests/test_loader.py`). Run `scripts/fetch_assets.py` locally
-and all 412 pass.
+and all 413 pass.
+
+Two more may skip depending on which machine CI lands on. The quantisation
+accuracy and quantised-backtest conclusions only hold where the runtime executes
+int8 faithfully. On some CPUs onnxruntime's int8 kernels compute the wrong
+answer; those two tests then skip with the CPU model attached rather than
+reporting a wrong conclusion. CI runs `pytest -rs` so skip reasons reach the log
+instead of hiding inside a green run. See item 3 in
+[07](docs/07_未决问题与风险.md) (Chinese).
 
 ## What this project addresses
 
@@ -201,6 +209,16 @@ and the absolute values are not a performance claim.
 
 Measured on an Intel Core Ultra 7 255H, onnxruntime CPU backend, single thread,
 batch 1, process pinned to CPU1.
+
+The two INT8 columns carry one more precondition: **the runtime has to execute
+int8 faithfully.** On some CPUs onnxruntime's int8 kernels compute the wrong
+answer — same file, same inputs, a 0.196 maximum deviation from a pure-numpy
+reference implementation, two orders of magnitude larger than the error
+quantisation itself introduces, and the quantised artifact is fine (the
+reference and another set of CPUs agree). So "what does quantisation cost" only
+holds once you measure it on your target hardware, and the table above is how to
+measure it. Criteria and the lab notes are in item 3 of
+[07](docs/07_未决问题与风险.md) (Chinese).
 
 **The honest result: on this CPU, INT8 does not make this small network
 faster.** Both quantized models are about 15% slower at the minimum latency than
