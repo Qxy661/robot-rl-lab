@@ -189,6 +189,7 @@ class RolloutStorage:
         展平只在这里做一次：mini-batch 循环里每轮都展平的话，同一份数据会
         被复制 num_learning_epochs 次。
         """
+
         def flat(x: Tensor) -> Tensor:
             return x.reshape(-1, *x.shape[2:])
 
@@ -224,7 +225,7 @@ class RolloutStorage:
         for _ in range(num_epochs):
             perm = torch.randperm(n, device=self.device)
             for i in range(num_mini_batches):
-                yield perm[bounds[i]: bounds[i + 1]]
+                yield perm[bounds[i] : bounds[i + 1]]
 
 
 class ReplayBuffer:
@@ -327,11 +328,25 @@ class ReplayBuffer:
         else:
             # 跨过尾部：先写到容量末尾，剩下的绕回头部。
             head = self.capacity - self._ptr
-            self._write(slice(self._ptr, self.capacity), obs[:head], actions[:head],
-                        rewards[:head], next_obs[:head], terminated[:head], truncated[:head])
+            self._write(
+                slice(self._ptr, self.capacity),
+                obs[:head],
+                actions[:head],
+                rewards[:head],
+                next_obs[:head],
+                terminated[:head],
+                truncated[:head],
+            )
             tail = n - head
-            self._write(slice(0, tail), obs[head:], actions[head:], rewards[head:],
-                        next_obs[head:], terminated[head:], truncated[head:])
+            self._write(
+                slice(0, tail),
+                obs[head:],
+                actions[head:],
+                rewards[head:],
+                next_obs[head:],
+                terminated[head:],
+                truncated[head:],
+            )
         self._ptr = end % self.capacity
         self._size = min(self._size + n, self.capacity)
 

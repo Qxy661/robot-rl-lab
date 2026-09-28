@@ -342,7 +342,9 @@ def test_reward_manager_rejects_unknown_name():
 
 def test_reward_breakdown_reports_raw_values(env):
     """逐项值回传的是未乘权重的原始量，日志里才能横向比较各项的量级。"""
-    env.reward_manager = RewardManager(defaults={"counter": 3.0}, registry={"counter": lambda e: 2.0})
+    env.reward_manager = RewardManager(
+        defaults={"counter": 3.0}, registry={"counter": lambda e: 2.0}
+    )
     env.reset(seed=0)
     env.step(np.zeros(MINI_SPEC.n_dof, dtype=np.float32))
 
@@ -368,9 +370,7 @@ def test_same_seed_gives_identical_rollouts():
             seed=seed, reward_manager=RewardManager(defaults={"height": 1.0}, registry=probe)
         )
         env.reset(seed=seed)
-        return [
-            env.step(np.full(MINI_SPEC.n_dof, 0.3, dtype=np.float32)).reward for _ in range(6)
-        ]
+        return [env.step(np.full(MINI_SPEC.n_dof, 0.3, dtype=np.float32)).reward for _ in range(6)]
 
     assert rollout(11) == rollout(11)
     assert rollout(11) != rollout(12)

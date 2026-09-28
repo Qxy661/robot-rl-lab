@@ -222,9 +222,7 @@ class SquashedGaussian:
         重要性采样整个是错的。
         """
         var = (2.0 * self.log_std).exp()
-        normal = -0.5 * (
-            (u - self.mean) ** 2 / var + 2.0 * self.log_std + math.log(2.0 * math.pi)
-        )
+        normal = -0.5 * ((u - self.mean) ** 2 / var + 2.0 * self.log_std + math.log(2.0 * math.pi))
         return (normal - _tanh_log_det(u)).sum(dim=-1)
 
     def entropy(self) -> Tensor:

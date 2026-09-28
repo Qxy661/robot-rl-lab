@@ -52,8 +52,10 @@ def _round_floats(value: Any, precision: int, path: str = "") -> Any:
             raise ValueError(f"指标 {path or '<root>'} 不是有限值（{value}），拒绝写入报告")
         return round(value, precision)
     if isinstance(value, Mapping):
-        return {str(k): _round_floats(v, precision, f"{path}.{k}" if path else str(k))
-                for k, v in value.items()}
+        return {
+            str(k): _round_floats(v, precision, f"{path}.{k}" if path else str(k))
+            for k, v in value.items()
+        }
     if isinstance(value, (list, tuple)):
         return [_round_floats(v, precision, f"{path}[{i}]") for i, v in enumerate(value)]
     return value
@@ -238,7 +240,9 @@ def _format_ratio(a: Any, b: Any) -> str:
     return f"{(float(b) - float(a)) / abs(float(a)) * 100:+.2f}%"
 
 
-def _render_table(header: Sequence[str], rows: Sequence[Sequence[str]], aligns: Sequence[str]) -> str:
+def _render_table(
+    header: Sequence[str], rows: Sequence[Sequence[str]], aligns: Sequence[str]
+) -> str:
     widths = [_display_width(h) for h in header]
     for row in rows:
         for i, cell in enumerate(row):
@@ -260,7 +264,9 @@ def _as_report(source: Report | Mapping[str, Any] | str | Path) -> Report:
     if isinstance(source, (str, Path)):
         return load_report(source)
     if isinstance(source, Mapping):
-        return Report(meta=dict(source.get("meta") or {}), metrics=dict(source.get("metrics") or {}))
+        return Report(
+            meta=dict(source.get("meta") or {}), metrics=dict(source.get("metrics") or {})
+        )
     raise TypeError(f"无法把 {type(source).__name__} 当作报告处理")
 
 
@@ -307,13 +313,15 @@ def compare_reports(
             if not is_changed and not include_unchanged:
                 continue
             changed += int(is_changed)
-            rows.append([
-                key,
-                _format_number(va),
-                _format_number(vb),
-                _format_delta(delta),
-                _format_ratio(va, vb),
-            ])
+            rows.append(
+                [
+                    key,
+                    _format_number(va),
+                    _format_number(vb),
+                    _format_delta(delta),
+                    _format_ratio(va, vb),
+                ]
+            )
         else:
             if va == vb and not include_unchanged:
                 continue
@@ -329,15 +337,19 @@ def compare_reports(
 
     shown = rows[:max_rows]
     if shown:
-        lines.append(_render_table(
-            ["指标", label_a, label_b, "Δ", "Δ%"],
-            shown,
-            ["left", "right", "right", "right", "right"],
-        ))
+        lines.append(
+            _render_table(
+                ["指标", label_a, label_b, "Δ", "Δ%"],
+                shown,
+                ["left", "right", "right", "right", "right"],
+            )
+        )
     else:
         lines.append("共同指标中没有差异。" if not include_unchanged else "两份报告没有共同指标。")
     if len(rows) > len(shown):
-        lines.append(f"... 另有 {len(rows) - len(shown)} 行未显示（共 {len(rows)} 行有变化/被列出）")
+        lines.append(
+            f"... 另有 {len(rows) - len(shown)} 行未显示（共 {len(rows)} 行有变化/被列出）"
+        )
 
     lines.append("")
     lines.append(f"共同指标 {len(shared)} 项，其中 {changed} 项有变化。")
@@ -350,7 +362,9 @@ def compare_reports(
     if meta_diff:
         lines.append("")
         lines.append("来源信息差异（不参与数值对比，但数值变了先看这里）：")
-        lines.extend(f"  {key}: {_format_number(va)} → {_format_number(vb)}" for key, va, vb in meta_diff)
+        lines.extend(
+            f"  {key}: {_format_number(va)} → {_format_number(vb)}" for key, va, vb in meta_diff
+        )
 
     return "\n".join(lines)
 
@@ -360,9 +374,7 @@ def _preview(keys: Sequence[str], limit: int = 8) -> str:
     return head if len(keys) <= limit else f"{head}, ..."
 
 
-def _meta_differences(
-    a: Mapping[str, Any], b: Mapping[str, Any]
-) -> list[tuple[str, Any, Any]]:
+def _meta_differences(a: Mapping[str, Any], b: Mapping[str, Any]) -> list[tuple[str, Any, Any]]:
     """列出 meta 里不一致的项。数值对不上时，先看是不是配置或 commit 就不是同一个。"""
     out: list[tuple[str, Any, Any]] = []
     for key in sorted(set(a) | set(b)):

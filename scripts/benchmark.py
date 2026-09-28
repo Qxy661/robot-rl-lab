@@ -48,13 +48,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     add_config_args(p)
     p.add_argument("--run-dir", type=Path, default=None)
     p.add_argument("--fp32", type=Path, default=None, help="默认 <run-dir>/exported/policy.onnx")
-    p.add_argument("--int8", type=Path, default=None, help="默认 <run-dir>/exported/policy_int8_<mode>.onnx")
-    p.add_argument("--mode", choices=["dynamic", "static"], default=None,
-                   help="要比对哪一份量化模型，默认取配置里的 quant_format")
+    p.add_argument(
+        "--int8", type=Path, default=None, help="默认 <run-dir>/exported/policy_int8_<mode>.onnx"
+    )
+    p.add_argument(
+        "--mode",
+        choices=["dynamic", "static"],
+        default=None,
+        help="要比对哪一份量化模型，默认取配置里的 quant_format",
+    )
     p.add_argument("--runs", type=int, default=1000, help="每轮统计次数")
     p.add_argument("--warmup", type=int, default=50, help="每轮预热次数")
     p.add_argument(
-        "--repeats", type=int, default=5,
+        "--repeats",
+        type=int,
+        default=5,
         help="重复几轮取中位。亚毫秒网络的单轮测量波动可达一倍，默认 5 轮",
     )
     p.add_argument("--threads", type=int, nargs="+", default=[1], help="要测的线程数，可给多个")
@@ -157,11 +165,15 @@ def main(argv: list[str] | None = None) -> int:
                 repeats=args.repeats,
             )
             for threads, stats in stats_by_threads.items():
-                info(f"batch {batch:4d} · {threads} 线程：p50 {stats.p50_ms:.3f} ms｜p99 {stats.p99_ms:.3f} ms")
-            rows.append({
-                "batch_size": batch,
-                "stats": {t: s.to_dict() for t, s in stats_by_threads.items()},
-            })
+                info(
+                    f"batch {batch:4d} · {threads} 线程：p50 {stats.p50_ms:.3f} ms｜p99 {stats.p99_ms:.3f} ms"
+                )
+            rows.append(
+                {
+                    "batch_size": batch,
+                    "stats": {t: s.to_dict() for t, s in stats_by_threads.items()},
+                }
+            )
         payload["sweeps"]["batch_sweep"] = rows
 
     report_path = dump_json(ensure_dir(run_dir / "exported") / "benchmark.json", payload)

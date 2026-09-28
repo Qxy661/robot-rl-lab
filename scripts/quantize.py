@@ -49,8 +49,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     add_config_args(p)
     p.add_argument("--run-dir", type=Path, default=None)
-    p.add_argument("--input", type=Path, default=None, help="FP32 ONNX，默认 <run-dir>/exported/policy.onnx")
-    p.add_argument("--out", type=Path, default=None, help="INT8 ONNX，默认 <run-dir>/exported/policy_int8.onnx")
+    p.add_argument(
+        "--input", type=Path, default=None, help="FP32 ONNX，默认 <run-dir>/exported/policy.onnx"
+    )
+    p.add_argument(
+        "--out", type=Path, default=None, help="INT8 ONNX，默认 <run-dir>/exported/policy_int8.onnx"
+    )
     p.add_argument("--mode", choices=["dynamic", "static"], default=None)
     p.add_argument("--calibration-steps", type=int, default=1024, help="静态量化的校准样本数")
     p.add_argument("--per-channel", action="store_true", help="权重按通道定标（默认按张量）")

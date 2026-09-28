@@ -43,7 +43,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     add_config_args(p)
     p.add_argument("--run-dir", type=Path, default=None, help="训练产物目录，用于定位权重与配置")
     p.add_argument("--checkpoint", type=Path, default=None, help="直接指定权重，优先于 --run-dir")
-    p.add_argument("--out", type=Path, default=None, help="输出路径，默认 <run-dir>/exported/policy.onnx")
+    p.add_argument(
+        "--out", type=Path, default=None, help="输出路径，默认 <run-dir>/exported/policy.onnx"
+    )
     p.add_argument("--opset", type=int, default=None)
     p.add_argument("--samples", type=int, default=256, help="每组校验输入的样本数")
     p.add_argument("--rollout-steps", type=int, default=512, help="真实观测采样步数")
@@ -111,9 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             info(line)
         payload["equivalence"] = equivalence.to_dict()
         if not equivalence.passed:
-            raise SystemExit(
-                f"导出引入的误差超过 {cfg.deploy.equivalence_tol}，先修导出再看量化"
-            )
+            raise SystemExit(f"导出引入的误差超过 {cfg.deploy.equivalence_tol}，先修导出再看量化")
     else:
         warn("跳过了等价校验；后续量化的精度结论将无法与导出误差分离")
 

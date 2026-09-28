@@ -404,13 +404,10 @@ def compare_benchmark(
 
     notes: list[str] = []
     if runs < _P99_MIN_RUNS:
-        notes.append(
-            f"统计次数只有 {runs}，p99 的尾部样本不足，这个 p99 更接近最大值而不是分位数"
-        )
+        notes.append(f"统计次数只有 {runs}，p99 的尾部样本不足，这个 p99 更接近最大值而不是分位数")
     if threads > 1:
         notes.append(
-            f"线程数为 {threads}，测到的是吞吐而非单次推理延迟；"
-            "要测纯算子延迟请用 threads=1"
+            f"线程数为 {threads}，测到的是吞吐而非单次推理延迟；要测纯算子延迟请用 threads=1"
         )
     if fp32.batch_size > 1:
         notes.append("batch 大于 1，单次控制步的延迟要按 batch=1 另测")

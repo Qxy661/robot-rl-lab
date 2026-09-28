@@ -281,8 +281,12 @@ def test_summary_keys_match_trainer_evaluate(env, policy):
     """评估层的标量键要和 Trainer.evaluate() 对齐，两条路径的数才能并排看。"""
     summary = evaluate_policy(env, policy, 1, seed=0).summary()
 
-    assert {"eval/return_mean", "eval/return_std", "eval/episode_length_mean",
-            "eval/episodes"} <= set(summary)
+    assert {
+        "eval/return_mean",
+        "eval/return_std",
+        "eval/episode_length_mean",
+        "eval/episodes",
+    } <= set(summary)
 
 
 def test_episode_results_keep_termination_reason(env, policy):

@@ -164,7 +164,9 @@ def stage_export(
     return path
 
 
-def stage_validate(policy: ActorCritic, onnx_path: Path, args: argparse.Namespace) -> dict[str, Any]:
+def stage_validate(
+    policy: ActorCritic, onnx_path: Path, args: argparse.Namespace
+) -> dict[str, Any]:
     """等价校验：导出本身不能引入误差。
 
     这一步必须排在量化之前。跳过它的话，回测出来的性能下降说不清是量化的
@@ -217,7 +219,9 @@ def stage_quantize(
     return int8_path
 
 
-def stage_benchmark(fp32_path: Path, int8_path: Path, obs_dim: int, args: argparse.Namespace) -> dict[str, Any]:
+def stage_benchmark(
+    fp32_path: Path, int8_path: Path, obs_dim: int, args: argparse.Namespace
+) -> dict[str, Any]:
     """延迟基准。同一个输入、同样的预热与次数——否则加速比不成立。
 
     冒烟脚本默认只跑 1 轮：这里要的是"链路通不通"，不是精确的延迟数。

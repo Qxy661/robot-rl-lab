@@ -465,13 +465,9 @@ def test_representative_round_picks_median_and_reports_spread():
 
     def make(p50: float, fastest: float | None = None) -> engines.LatencyStats:
         samples = [p50] * 99 + [fastest if fastest is not None else p50]
-        return engines.LatencyStats.from_samples(
-            samples, batch_size=1, threads=1, model="m"
-        )
+        return engines.LatencyStats.from_samples(samples, batch_size=1, threads=1, model="m")
 
-    chosen = bench.representative_round(
-        [make(0.010), make(0.030, fastest=0.004), make(0.020)]
-    )
+    chosen = bench.representative_round([make(0.010), make(0.030, fastest=0.004), make(0.020)])
 
     assert chosen.p50_ms == pytest.approx(0.020), "取的是中位那一轮，不是最快那轮"
     assert chosen.rounds == 3
@@ -535,9 +531,7 @@ def test_benchmark_single_round_has_no_paired_ratios(onnx_fp32, onnx_int8):
 def test_benchmark_paired_rounds_report_a_ratio_per_round(onnx_fp32, onnx_int8):
     """配对测量：每轮两个模型各测一次，得出该轮自己的比值。"""
     repeats = 3
-    report = bench.compare_benchmark(
-        onnx_fp32, onnx_int8, warmup=5, runs=60, repeats=repeats
-    )
+    report = bench.compare_benchmark(onnx_fp32, onnx_int8, warmup=5, runs=60, repeats=repeats)
 
     assert len(report.round_ratios) == repeats
     assert all(np.isfinite(r) and r > 0 for r in report.round_ratios)

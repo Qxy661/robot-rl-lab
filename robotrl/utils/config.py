@@ -9,7 +9,7 @@
 
 命令行覆写用点号路径：
 
-    python scripts/train.py --config configs/train/g1_velocity.yaml \
+    python scripts/train.py --config robotrl/configs/train/g1_velocity.yaml \
         --set train.num_envs=128 --set env.robot=go2 --set ppo.lr_actor=1e-4
 
 类型从 dataclass 的字段注解来推：字段声明为 int，覆写值 "128" 就会被转成
@@ -150,8 +150,7 @@ def _build_dataclass(cls: type, data: Any) -> Any:
     unknown = set(data) - known
     if unknown:
         raise ValueError(
-            f"{cls.__name__} 不认识这些配置项：{sorted(unknown)}；"
-            f"可用项：{sorted(known)}"
+            f"{cls.__name__} 不认识这些配置项：{sorted(unknown)}；可用项：{sorted(known)}"
         )
 
     kwargs = {}

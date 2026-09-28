@@ -55,8 +55,12 @@ def main(argv: list[str] | None = None) -> int:
     run_dir = ensure_dir(args.run_dir or cfg.train.run_dir)
 
     header(f"训练 {cfg.env.robot}-{cfg.env.task} · {cfg.train.algo.upper()}")
-    info(f"总步数 {cfg.train.total_timesteps:,}｜并行 {cfg.train.num_envs} 环境（{cfg.train.vec_backend}）")
-    info(f"控制 {1 / cfg.env.control_dt:.0f} Hz｜仿真 {1 / cfg.env.sim_dt:.0f} Hz｜回合上限 {cfg.env.max_episode_steps} 步")
+    info(
+        f"总步数 {cfg.train.total_timesteps:,}｜并行 {cfg.train.num_envs} 环境（{cfg.train.vec_backend}）"
+    )
+    info(
+        f"控制 {1 / cfg.env.control_dt:.0f} Hz｜仿真 {1 / cfg.env.sim_dt:.0f} Hz｜回合上限 {cfg.env.max_episode_steps} 步"
+    )
     info(f"产物目录 {run_dir}")
 
     vec = build_envs(cfg)
@@ -66,7 +70,9 @@ def main(argv: list[str] | None = None) -> int:
         info(f"多进程推进：{vec.num_workers} 个进程持 {vec.num_envs} 个环境")
 
     trainer = build_trainer(cfg, vec, policy, run_dir=run_dir, verbose=not args.quiet)
-    info(f"PyTorch 线程 {trainer.torch_threads['num_threads']}（interop {trainer.torch_threads['interop_threads']}）")
+    info(
+        f"PyTorch 线程 {trainer.torch_threads['num_threads']}（interop {trainer.torch_threads['interop_threads']}）"
+    )
 
     header("训练中")
     t0 = time.perf_counter()
@@ -95,11 +101,7 @@ def _trend(curve: list[dict], window: float = 0.1) -> str:
     只统计有回合跑完的轮次：回合很长时前若干轮可能一条都没结束，那些轮里
     根本没有 rollout/return_mean 这个键。
     """
-    values = [
-        row["rollout/return_mean"]
-        for row in curve
-        if row.get("rollout/episodes", 0.0) > 0
-    ]
+    values = [row["rollout/return_mean"] for row in curve if row.get("rollout/episodes", 0.0) > 0]
     if not values:
         return f"{len(curve)} 轮内没有回合跑完，策略尚未活到回合上限"
 

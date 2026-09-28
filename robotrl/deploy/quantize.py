@@ -238,7 +238,9 @@ def _preprocess(src: Path) -> Path:
     from onnxruntime.quantization.shape_inference import quant_pre_process
 
     out = src.with_name(f"{src.stem}_preprocessed{src.suffix}")
-    quant_pre_process(input_model_path=str(src), output_model_path=str(out), skip_symbolic_shape=False)
+    quant_pre_process(
+        input_model_path=str(src), output_model_path=str(out), skip_symbolic_shape=False
+    )
     return out
 
 

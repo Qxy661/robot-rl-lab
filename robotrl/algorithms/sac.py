@@ -86,8 +86,9 @@ class SAC:
         if cfg.auto_alpha:
             # 优化 log_alpha 而不是 alpha：alpha 必须为正，直接优化就得每步
             # 投影到正数区间，而 log 参数化让正性自动成立，梯度也无界。
-            self.log_alpha = torch.tensor(math.log(cfg.alpha), device=self.device,
-                                          requires_grad=True)
+            self.log_alpha = torch.tensor(
+                math.log(cfg.alpha), device=self.device, requires_grad=True
+            )
             self.optimizer_alpha: torch.optim.Adam | None = torch.optim.Adam(
                 [self.log_alpha], lr=cfg.lr, eps=1e-8
             )
@@ -135,9 +136,8 @@ class SAC:
         # 目标值这一路必须停在梯度之外：Q 的目标里不该有对 Q 自身的梯度，
         # 否则就是在优化一个自己定义的目标，会发散。
         q_next = self.critic_target.min_q(next_obs_norm, next_action)
-        return (
-            batch["reward"]
-            + self.cfg.gamma * batch["not_terminated"] * (q_next - self.alpha.detach() * next_log_prob)
+        return batch["reward"] + self.cfg.gamma * batch["not_terminated"] * (
+            q_next - self.alpha.detach() * next_log_prob
         )
 
     def update(self, batch: dict[str, Tensor]) -> dict[str, float]:

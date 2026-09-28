@@ -92,7 +92,4 @@ def encode(metadata: dict[str, Any]) -> dict[str, str]:
     字符串原样保留，其余 json.dumps。与 `parse_value` 是一对，两者必须成对使用，
     否则会出现"写进去是 1，读出来是 '1'"这种难查的错位。
     """
-    return {
-        str(k): v if isinstance(v, str) else json.dumps(v)
-        for k, v in metadata.items()
-    }
+    return {str(k): v if isinstance(v, str) else json.dumps(v) for k, v in metadata.items()}

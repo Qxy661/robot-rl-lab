@@ -176,7 +176,11 @@ class TrainMetrics:
     metrics: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"iteration": self.iteration, "total_timesteps": self.total_timesteps, **self.metrics}
+        return {
+            "iteration": self.iteration,
+            "total_timesteps": self.total_timesteps,
+            **self.metrics,
+        }
 
 
 class Trainer(ABC):
@@ -220,9 +224,7 @@ class Trainer(ABC):
             obs, _ = self.env.reset(seed=seed + ep)
             done, ep_return, ep_len = False, 0.0, 0
             while not done:
-                action = self.policy(
-                    torch.as_tensor(obs.policy, dtype=torch.float32).unsqueeze(0)
-                )
+                action = self.policy(torch.as_tensor(obs.policy, dtype=torch.float32).unsqueeze(0))
                 result = self.env.step(action.squeeze(0).numpy())
                 obs, done = result.obs, (result.terminated or result.truncated)
                 ep_return += result.reward

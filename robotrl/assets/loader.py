@@ -115,9 +115,7 @@ def model_path(spec: RobotSpec, *, scene: str = "scene.xml") -> Path:
     path = model_dir / scene
     if not path.is_file():
         available = sorted(p.name for p in model_dir.glob("*.xml"))
-        raise FileNotFoundError(
-            f"{model_dir} 下没有 {scene!r}。该目录已有的 XML：{available}"
-        )
+        raise FileNotFoundError(f"{model_dir} 下没有 {scene!r}。该目录已有的 XML：{available}")
     return path
 
 

@@ -50,6 +50,7 @@ def register_reward(name: str) -> Callable[[RewardFn], RewardFn]:
     名字是配置里的键，也是日志里的键，因此不允许同名覆盖——静默覆盖会让
     "权重调了但没反应"这类问题查很久。
     """
+
     def decorator(fn: RewardFn) -> RewardFn:
         if name in _REWARD_REGISTRY and _REWARD_REGISTRY[name] is not fn:
             raise ValueError(f"奖励项 {name!r} 已被注册，不能覆盖")

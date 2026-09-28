@@ -75,9 +75,7 @@ def fill_storage(
             action=torch.zeros(num_envs, ACTION_DIM),
             log_prob=torch.zeros(num_envs),
             reward=torch.tensor(rewards[t], dtype=torch.float32),
-            terminated=torch.tensor(
-                terminated[t] if terminated else [False] * num_envs
-            ),
+            terminated=torch.tensor(terminated[t] if terminated else [False] * num_envs),
             truncated=torch.tensor(truncated[t] if truncated else [False] * num_envs),
             value=torch.tensor(values[t], dtype=torch.float32),
         )
@@ -288,7 +286,11 @@ def test_ppo_update_produces_finite_metrics():
     metrics = algo.update(storage)
 
     assert set(metrics) >= {
-        "ppo/actor_loss", "ppo/value_loss", "ppo/clip_fraction", "ppo/kl", "ppo/lr_actor"
+        "ppo/actor_loss",
+        "ppo/value_loss",
+        "ppo/clip_fraction",
+        "ppo/kl",
+        "ppo/lr_actor",
     }
     assert all(math.isfinite(v) for v in metrics.values())
 
@@ -495,9 +497,7 @@ def test_twin_q_networks_are_independently_initialized():
     q1, q2 = twin(torch.randn(32, OBS_DIM), torch.rand(32, ACTION_DIM) * 2 - 1)
 
     assert not torch.allclose(q1, q2)
-    assert not torch.allclose(
-        next(twin.q1.parameters()), next(twin.q2.parameters())
-    )
+    assert not torch.allclose(next(twin.q1.parameters()), next(twin.q2.parameters()))
 
 
 def test_twin_q_min_matches_elementwise_min():
@@ -680,10 +680,12 @@ def test_replay_buffer_batch_add_matches_single_adds():
 
     for i in range(3):
         single.add(obs[i], actions[i], rewards[i], next_obs[i], terminated[i], truncated[i])
-    batched.add_batch(obs[:2], actions[:2], rewards[:2], next_obs[:2], terminated[:2],
-                      truncated[:2])
-    batched.add_batch(obs[2:], actions[2:], rewards[2:], next_obs[2:], terminated[2:],
-                      truncated[2:])
+    batched.add_batch(
+        obs[:2], actions[:2], rewards[:2], next_obs[:2], terminated[:2], truncated[:2]
+    )
+    batched.add_batch(
+        obs[2:], actions[2:], rewards[2:], next_obs[2:], terminated[2:], truncated[2:]
+    )
 
     for key in ("obs", "actions", "rewards", "terminated", "truncated"):
         assert np.array_equal(single.state_dict()[key], batched.state_dict()[key])
@@ -692,8 +694,9 @@ def test_replay_buffer_batch_add_matches_single_adds():
 def test_replay_buffer_batch_add_wraps_around_capacity():
     buffer = ReplayBuffer(capacity=4, obs_dim=2, action_dim=1, seed=0)
     obs = np.arange(8, dtype=np.float32).reshape(4, 2)
-    buffer.add_batch(obs[:3], np.zeros((3, 1), np.float32), [0.0, 1.0, 2.0],
-                     obs[:3], [False] * 3, [False] * 3)
+    buffer.add_batch(
+        obs[:3], np.zeros((3, 1), np.float32), [0.0, 1.0, 2.0], obs[:3], [False] * 3, [False] * 3
+    )
     buffer.add_batch(obs[3:], np.zeros((1, 1), np.float32), [3.0], obs[3:], [False], [False])
 
     assert len(buffer) == 4
@@ -703,8 +706,14 @@ def test_replay_buffer_batch_add_wraps_around_capacity():
 def test_replay_buffer_state_dict_roundtrip():
     buffer = ReplayBuffer(capacity=8, obs_dim=2, action_dim=1, seed=0)
     for i in range(5):
-        buffer.add(np.full(2, i, np.float32), np.zeros(1, np.float32), float(i),
-                   np.full(2, i + 1, np.float32), i == 0, False)
+        buffer.add(
+            np.full(2, i, np.float32),
+            np.zeros(1, np.float32),
+            float(i),
+            np.full(2, i + 1, np.float32),
+            i == 0,
+            False,
+        )
 
     restored = ReplayBuffer(capacity=8, obs_dim=2, action_dim=1, seed=1)
     restored.load_state_dict(buffer.state_dict())
@@ -797,8 +806,7 @@ def test_ppo_trains_on_toy_env_without_nan():
     策略输出始终满足动作契约。
     """
     envs = toy_envs(2)
-    policy = ActorCritic(envs[0].obs_dim, envs[0].action_dim,
-                         critic_obs_dim=envs[0].critic_obs_dim)
+    policy = ActorCritic(envs[0].obs_dim, envs[0].action_dim, critic_obs_dim=envs[0].critic_obs_dim)
     cfg = PPOConfig(num_steps_per_env=32, num_learning_epochs=3, num_mini_batches=2)
     trainer = PPOTrainer(envs, policy, cfg, seed=0, verbose=False)
 
@@ -843,8 +851,9 @@ def test_sac_warmup_uses_random_actions():
     trainer = SACTrainer(envs, actor, cfg, steps_per_iteration=50, verbose=False)
     trainer._prepare_run_dir()
 
-    actions = np.stack([trainer._select_actions(torch.zeros(1, envs[0].obs_dim))
-                        for _ in range(20)])
+    actions = np.stack(
+        [trainer._select_actions(torch.zeros(1, envs[0].obs_dim)) for _ in range(20)]
+    )
     assert actions.std() > 0.1, "预热阶段应该是均匀随机动作"
     assert np.abs(actions).max() <= 1.0
 
@@ -865,8 +874,9 @@ def test_trainer_checkpoint_roundtrip_reproduces_evaluation(algo_name, tmp_path)
     else:
         policy = SACActor(env.obs_dim, env.action_dim, hidden_dims=(16, 16))
         cfg = SACConfig(buffer_size=500, batch_size=16, learning_starts=50)
-        trainer = SACTrainer(envs, policy, cfg, run_dir=tmp_path, seed=0,
-                             steps_per_iteration=100, verbose=False)
+        trainer = SACTrainer(
+            envs, policy, cfg, run_dir=tmp_path, seed=0, steps_per_iteration=100, verbose=False
+        )
 
     trainer.train(200)
     path = trainer.save(tmp_path / "ckpt.pt")
@@ -877,8 +887,15 @@ def test_trainer_checkpoint_roundtrip_reproduces_evaluation(algo_name, tmp_path)
         loaded = PPOTrainer(toy_envs(1), fresh, cfg, run_dir=tmp_path, seed=0, verbose=False)
     else:
         fresh = SACActor(env.obs_dim, env.action_dim, hidden_dims=(16, 16))
-        loaded = SACTrainer(toy_envs(1), fresh, cfg, run_dir=tmp_path, seed=0,
-                            steps_per_iteration=100, verbose=False)
+        loaded = SACTrainer(
+            toy_envs(1),
+            fresh,
+            cfg,
+            run_dir=tmp_path,
+            seed=0,
+            steps_per_iteration=100,
+            verbose=False,
+        )
     loaded.load(path)
 
     assert loaded.num_timesteps == trainer.num_timesteps

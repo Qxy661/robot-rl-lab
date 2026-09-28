@@ -46,9 +46,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     add_config_args(p)
     p.add_argument("--run-dir", type=Path, default=None)
     p.add_argument("--fp32", type=Path, default=None, help="默认 <run-dir>/exported/policy.onnx")
-    p.add_argument("--int8", type=Path, default=None, help="默认 <run-dir>/exported/policy_int8_<mode>.onnx")
-    p.add_argument("--mode", choices=["dynamic", "static"], default=None,
-                   help="要回测哪一份量化模型，默认取配置里的 quant_format")
+    p.add_argument(
+        "--int8", type=Path, default=None, help="默认 <run-dir>/exported/policy_int8_<mode>.onnx"
+    )
+    p.add_argument(
+        "--mode",
+        choices=["dynamic", "static"],
+        default=None,
+        help="要回测哪一份量化模型，默认取配置里的 quant_format",
+    )
     p.add_argument("--episodes", type=int, default=None)
     p.add_argument("--kl-threshold", type=float, default=None)
     p.add_argument("--markdown", action="store_true", help="额外输出一份 Markdown 对照表")

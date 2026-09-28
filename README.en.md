@@ -30,9 +30,9 @@ non-legged ones.
 
 ## Features
 
-- **PPO and SAC written from scratch**, ~200 lines each, no RL library. Hyperparameters
-  follow the papers and mainstream implementations, with the implementation details
-  commented one by one.
+- **PPO and SAC written from scratch**, under 300 lines each including comments, no RL
+  library. Hyperparameters follow the papers and mainstream implementations, with the
+  implementation details commented one by one.
 - **Cross-morphology**: G1 (29-DoF humanoid), H1 (19-DoF humanoid) and Go2 (12-DoF
   quadruped) share one environment, one algorithm stack and one deployment pipeline.
   Switching is `env.robot`.

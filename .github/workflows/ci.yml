@@ -49,6 +49,11 @@ jobs:
       - name: 安装项目与开发依赖
         run: python -m pip install -e ".[dev,deploy]"
 
+      # 格式检查排在 lint 前面：格式错了是机械问题，先让它在最快的一步暴露。
+      # docs/ 的 Markdown 不在格式检查范围内（见 pyproject 的 [tool.ruff.format]）。
+      - name: 格式检查
+        run: ruff format --check .
+
       - name: 代码检查
         run: ruff check .
 

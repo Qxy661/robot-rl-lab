@@ -94,8 +94,7 @@ def test_split_rejects_wrong_width():
 
 def test_concat_rejects_missing_and_extra_segments():
     contract = make_obs_contract(2)
-    parts = {name: np.zeros(contract.dim_of(name), dtype=np.float32)
-             for name in contract.names}
+    parts = {name: np.zeros(contract.dim_of(name), dtype=np.float32) for name in contract.names}
 
     with pytest.raises(KeyError, match="缺少"):
         contract.concat({k: v for k, v in parts.items() if k != "cmd"})
@@ -108,8 +107,7 @@ def test_concat_rejects_missing_and_extra_segments():
 
 def test_concat_rejects_wrong_segment_width():
     contract = make_obs_contract(2)
-    parts = {name: np.zeros(contract.dim_of(name), dtype=np.float32)
-             for name in contract.names}
+    parts = {name: np.zeros(contract.dim_of(name), dtype=np.float32) for name in contract.names}
     parts["cmd"] = np.zeros(5, dtype=np.float32)  # 应是 3
 
     with pytest.raises(ValueError, match="cmd"):

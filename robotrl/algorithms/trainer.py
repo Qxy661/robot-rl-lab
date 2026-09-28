@@ -330,7 +330,11 @@ class PPOTrainer(_TrainerBase):
         return self.history
 
     def _checkpoint(self) -> dict[str, Any]:
-        return {**super()._checkpoint(), "algo": self.algo.state_dict(), "iteration": self.iteration}
+        return {
+            **super()._checkpoint(),
+            "algo": self.algo.state_dict(),
+            "iteration": self.iteration,
+        }
 
     def _load_extra(self, ckpt: dict[str, Any]) -> None:
         self.algo.load_state_dict(ckpt["algo"])
@@ -385,11 +389,14 @@ class SACTrainer(_TrainerBase):
         )
         self.cfg = cfg or SACConfig()
         self.actor: SACActor = actor.to(self.device)
-        self.critic = (critic or TwinQNetwork(
-            self.actor.obs_dim,
-            self.actor.action_dim,
-            use_layer_norm=self.cfg.use_layer_norm,
-        )).to(self.device)
+        self.critic = (
+            critic
+            or TwinQNetwork(
+                self.actor.obs_dim,
+                self.actor.action_dim,
+                use_layer_norm=self.cfg.use_layer_norm,
+            )
+        ).to(self.device)
         self.algo = algo or SAC(self.actor, self.critic, self.cfg, device=self.device)
         self.steps_per_iteration = steps_per_iteration
         self.num_updates_per_step = num_updates_per_step

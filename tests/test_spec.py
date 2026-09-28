@@ -119,8 +119,11 @@ def test_rejects_length_mismatch(field):
 
 def test_rejects_empty_joint_list():
     with pytest.raises(ValueError, match="不能为空"):
-        RobotSpec(**_valid_kwargs(controlled_joints=(), default_angles=(), pd_kp=(),
-                                  pd_kd=(), torque_limits=()))
+        RobotSpec(
+            **_valid_kwargs(
+                controlled_joints=(), default_angles=(), pd_kp=(), pd_kd=(), torque_limits=()
+            )
+        )
 
 
 def test_rejects_duplicate_joint_names():

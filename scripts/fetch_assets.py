@@ -59,8 +59,7 @@ def fetch(dest: Path, update: bool = False) -> Path:
 
     if dest.exists() and any(dest.iterdir()):
         sys.stderr.write(
-            f"目标目录 {dest} 已存在且非空，但不是 git 仓库。\n"
-            "请换个 --dest，或先清空该目录。\n"
+            f"目标目录 {dest} 已存在且非空，但不是 git 仓库。\n请换个 --dest，或先清空该目录。\n"
         )
         raise SystemExit(1)
 
@@ -69,14 +68,18 @@ def fetch(dest: Path, update: bool = False) -> Path:
     # --filter=blob:none 让克隆时只取提交历史不取文件内容，
     # --sparse 让工作区初始为空。两者叠加，只有下面指定的目录会被真正下载。
     print(f"从 {REPO_URL} 拉取模型（稀疏检出，仅 {len(SUBDIRS)} 个目录）...")
-    _run([
-        "git", "clone",
-        "--filter=blob:none",
-        "--sparse",
-        "--depth", "1",
-        REPO_URL,
-        str(dest),
-    ])
+    _run(
+        [
+            "git",
+            "clone",
+            "--filter=blob:none",
+            "--sparse",
+            "--depth",
+            "1",
+            REPO_URL,
+            str(dest),
+        ]
+    )
 
     print(f"检出目录：{', '.join(SUBDIRS)}")
     _run(["git", "sparse-checkout", "set", *SUBDIRS], cwd=dest)

@@ -177,6 +177,7 @@ def collect_observations(
         return env.np_random.uniform(-1.0, 1.0, size=env.action_dim).astype(np.float32)
 
     if engine is not None:
+
         def _act(obs: np.ndarray) -> np.ndarray:
             return np.asarray(engine.infer(obs), dtype=np.float32)
     else:
@@ -477,8 +478,7 @@ class BacktestReport:
         rows.append(("KL 估计偏差", "—", f"{self.kl.bias_mean:.4f}", "已从上面的值里扣除"))
 
         lines = [
-            f"回测条件：{self.episodes} 回合，起始种子 {self.seed}，"
-            f"两个策略逐回合同种子复位",
+            f"回测条件：{self.episodes} 回合，起始种子 {self.seed}，两个策略逐回合同种子复位",
             "",
             "| 指标 | FP32 | INT8 | 变化 |",
             "| --- | --- | --- | --- |",

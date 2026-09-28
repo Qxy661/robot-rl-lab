@@ -66,7 +66,16 @@ _FOOT_NAME_HINTS = ("foot", "ankle")
 #: 触地即失败的部位名字线索。真正的判据是"除了足端，谁都不许碰地"，
 #: 这里给的是排除足端之后剩下的那些部位。
 _PENALIZED_NAME_HINTS = (
-    "base", "torso", "trunk", "pelvis", "waist", "hip", "knee", "thigh", "shank", "calf",
+    "base",
+    "torso",
+    "trunk",
+    "pelvis",
+    "waist",
+    "hip",
+    "knee",
+    "thigh",
+    "shank",
+    "calf",
 )
 
 #: 机身下方的地形采样网格间距（米）与射线起点高度（米）。起点要够高，越过
@@ -276,8 +285,10 @@ class MujocoEnv(BaseEnv):
         """
         for jnt in range(model.njnt):
             if model.jnt_type[jnt] == mujoco.mjtJoint.mjJNT_FREE:
-                return int(model.jnt_bodyid[jnt]), int(model.jnt_qposadr[jnt]), int(
-                    model.jnt_dofadr[jnt]
+                return (
+                    int(model.jnt_bodyid[jnt]),
+                    int(model.jnt_qposadr[jnt]),
+                    int(model.jnt_dofadr[jnt]),
                 )
         return 1, -1, -1
 
@@ -301,9 +312,7 @@ class MujocoEnv(BaseEnv):
         if candidates:
             feet = sorted(candidates, key=lambda body: self._body_name(model, body))
         else:
-            expected = {Morphology.BIPED: 2, Morphology.QUADRUPED: 4}.get(
-                self.spec.morphology, 0
-            )
+            expected = {Morphology.BIPED: 2, Morphology.QUADRUPED: 4}.get(self.spec.morphology, 0)
             heights = self._rest_heights(model)
             ordered = sorted(
                 (body for body in leaves if body != self._base_body_id),
@@ -422,8 +431,7 @@ class MujocoEnv(BaseEnv):
         data.qpos[self.qpos_ids] = self.defaults + joint_noise * self._RESET_JOINT_POS_NOISE
         data.qvel[:] = 0.0
         data.qvel[self.dof_ids] = (
-            self.np_random.uniform(-1.0, 1.0, size=self.spec.n_dof)
-            * self._RESET_JOINT_VEL_NOISE
+            self.np_random.uniform(-1.0, 1.0, size=self.spec.n_dof) * self._RESET_JOINT_VEL_NOISE
         )
 
         self._last_action = np.zeros(self.spec.n_dof)

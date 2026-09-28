@@ -245,7 +245,9 @@ class EquivalenceReport:
             f"{head}（容差 {self.tol:.1e}，样本 {self.n_samples}）",
             f"  总体    {self.metrics.summary()}",
         ]
-        lines.extend(f"  {name:<12} {metrics['max_abs_err']:.3e}" for name, metrics in self.per_input.items())
+        lines.extend(
+            f"  {name:<12} {metrics['max_abs_err']:.3e}" for name, metrics in self.per_input.items()
+        )
         if self.segments:
             lines.append(f"  最敏感段 {self.top_sensitive_segment}")
             lines.extend(
@@ -474,7 +476,9 @@ def _read_qdq_params(path: Path, tensor_name: str) -> tuple[float, int] | None:
         if scale is None:
             continue
         zp = initializers.get(node.input[2]) if len(node.input) > 2 else None
-        return float(np.asarray(scale).ravel()[0]), int(np.asarray(zp).ravel()[0]) if zp is not None else 0
+        return float(np.asarray(scale).ravel()[0]), int(
+            np.asarray(zp).ravel()[0]
+        ) if zp is not None else 0
     return None
 
 
@@ -516,7 +520,9 @@ def attribute_by_segment(
             scale, zero_point = _segment_quant_params(int8_engine, obs[:, index], segment.name)
 
         perturbed = obs.copy()
-        perturbed[:, index] = quantize_to_grid(perturbed[:, index], scale, zero_point).astype(np.float32)
+        perturbed[:, index] = quantize_to_grid(perturbed[:, index], scale, zero_point).astype(
+            np.float32
+        )
         delta = np.abs(fp32_engine.infer_batch(perturbed) - reference)
 
         original = np.abs(obs[:, index]).mean()

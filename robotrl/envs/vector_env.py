@@ -169,9 +169,7 @@ class SerialVecEnv(VecEnv):
             raise ValueError(
                 f"动作形状应为 {(self.num_envs, self.action_dim)}，实际 {actions.shape}"
             )
-        return [
-            env.step(a) for env, a in zip(self.envs, actions, strict=True)
-        ]
+        return [env.step(a) for env, a in zip(self.envs, actions, strict=True)]
 
     def close(self) -> None:
         for env in self.envs:

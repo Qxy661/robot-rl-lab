@@ -15,7 +15,6 @@ dependencies = [
     "torch>=2.1",
     "mujoco>=3.1",
     "pyyaml>=6.0",
-    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +28,6 @@ dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.4",
-    "tensorboard>=2.15",
 ]
 
 [project.urls]
@@ -38,6 +36,13 @@ Source = "https://github.com/Qxy661/robot-rl-lab"
 
 [tool.setuptools.packages.find]
 include = ["robotrl*"]
+
+# 配置文件（configs/ 下的 YAML 预设）不在包的 .py 里，setuptools 默认不会打包。
+# 少了这一段，pip 装出来的 robotrl/configs/ 是空的，`--config robotrl/configs/
+# train/g1_velocity.yaml` 这类命令在装的包里直接找不到文件——而 `pip install -e .`
+# 从源码目录读，看不出这个问题。所以只能靠构建产物验证。
+[tool.setuptools.package-data]
+robotrl = ["configs/envs/*.yaml", "configs/train/*.yaml"]
 
 # ---------------------------------------------------------------------------
 # 代码检查
@@ -74,6 +79,17 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["robotrl"]
+
+[tool.ruff.format]
+# 不格式化 Markdown。docs/ 里的代码块是教学示例，注释是按列对齐的——
+#
+#     joints = ["hip", "knee", "ankle"]        # 列表：能增删改
+#     angles = (-0.1, 0.3, -0.2)               # 元组：定下来就不能改
+#
+# formatter 会把对齐压成单个空格。对齐在这里不是洁癖：零基础读者要靠列对齐
+# 一眼扫到"注释在讲哪一行"。代码块是给眼睛看的排版，不是给工具看的源码。
+# lint 仍然覆盖这些文件——只跳过格式化，不跳过检查。
+exclude = ["*.md"]
 
 # ---------------------------------------------------------------------------
 # 测试

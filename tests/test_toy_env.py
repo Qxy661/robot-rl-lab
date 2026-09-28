@@ -82,6 +82,7 @@ def test_actions_are_clipped(env):
     这里用"走了多远"间接验证：给定同样的初速度，动作越大加速度越大。
     大动作与小动作如果产生同样的位移，说明裁剪或缩放没生效。
     """
+
     def travel(action_value: float) -> float:
         e = ToyVelocityEnv(seed=0)
         e.reset(seed=0)
@@ -150,6 +151,7 @@ def test_step_counter_resets_on_new_episode():
 
 def test_same_seed_gives_identical_trajectories():
     """同一份代码同一种子必须走出同一条轨迹，否则实验结论无法比较。"""
+
     def rollout(seed: int) -> list[float]:
         e = ToyVelocityEnv(seed=seed)
         e.reset(seed=seed)

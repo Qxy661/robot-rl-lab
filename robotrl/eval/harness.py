@@ -37,16 +37,16 @@ from robotrl.envs.base_env import BaseEnv
 #: 表外的段没有先验量程，不做饱和统计，但 max_abs 仍然给出——量程可以自己判，
 #: 最大值是客观的。要换一套量程就传 saturation_thresholds。
 _SATURATION_THRESHOLDS: dict[str, float] = {
-    "lin_vel": 2.0,        # m/s。常规行走到小跑的量级，再高基本是失控
-    "ang_vel": 3.0,        # rad/s
-    "proj_gravity": 0.9,   # 单位向量分量。接近 1 表示机身几乎躺平
-    "cmd": 1.0,            # 指令采样范围，超出说明指令本身有问题
-    "dof_pos": 1.0,        # rad。偏离默认姿态 1 弧度已经很夸张
-    "dof_vel": 10.0,       # rad/s
-    "last_action": 1.0,    # 动作契约定死在 [-1, 1]，贴边即饱和
-    "pos": 5.0,            # 与 ToyVelocityEnv._BOUND 一致
+    "lin_vel": 2.0,  # m/s。常规行走到小跑的量级，再高基本是失控
+    "ang_vel": 3.0,  # rad/s
+    "proj_gravity": 0.9,  # 单位向量分量。接近 1 表示机身几乎躺平
+    "cmd": 1.0,  # 指令采样范围，超出说明指令本身有问题
+    "dof_pos": 1.0,  # rad。偏离默认姿态 1 弧度已经很夸张
+    "dof_vel": 10.0,  # rad/s
+    "last_action": 1.0,  # 动作契约定死在 [-1, 1]，贴边即饱和
+    "pos": 5.0,  # 与 ToyVelocityEnv._BOUND 一致
     "vel": 2.0,
-    "damping": 1.0,        # toy 环境的特权段，量程本来就在 1 附近
+    "damping": 1.0,  # toy 环境的特权段，量程本来就在 1 附近
 }
 
 
@@ -421,7 +421,9 @@ def evaluate_with_protocol(
     policy.eval()
 
     contract = env.obs_contract
-    accumulator = _SegmentAccumulator(contract, _resolve_thresholds(contract, saturation_thresholds))
+    accumulator = _SegmentAccumulator(
+        contract, _resolve_thresholds(contract, saturation_thresholds)
+    )
 
     episodes: list[EpisodeResult] = []
     for seed in protocol.seeds:

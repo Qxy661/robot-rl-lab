@@ -78,8 +78,10 @@ def extract_state_dict(checkpoint: Any) -> dict[str, torch.Tensor]:
 
     for key in ("policy", "model", "state_dict", "actor"):
         value = checkpoint.get(key)
-        if isinstance(value, Mapping) and value and all(
-            isinstance(v, torch.Tensor) for v in value.values()
+        if (
+            isinstance(value, Mapping)
+            and value
+            and all(isinstance(v, torch.Tensor) for v in value.values())
         ):
             return dict(value)
 
@@ -277,8 +279,10 @@ class ExportReport:
         else:
             angles = self.metadata.get("default_angles", "[]")
             scale = self.metadata.get("action_scale", "[]")
-            lines.append(f"metadata  完整（default_angles 长度 {len(json.loads(angles))}，"
-                         f"action_scale 长度 {len(json.loads(scale))}）")
+            lines.append(
+                f"metadata  完整（default_angles 长度 {len(json.loads(angles))}，"
+                f"action_scale 长度 {len(json.loads(scale))}）"
+            )
         lines.extend(f"提示      {note}" for note in self.notes)
         return "\n".join(lines)
 
@@ -329,7 +333,9 @@ def inspect_onnx(path: str | Path, *, check: bool = True) -> ExportReport:
         return [d.dim_value if d.HasField("dim_value") else None for d in dims]
 
     graph = model.graph
-    report.inputs = {v.name: _shape(v) for v in graph.input if v.name not in {i.name for i in graph.initializer}}
+    report.inputs = {
+        v.name: _shape(v) for v in graph.input if v.name not in {i.name for i in graph.initializer}
+    }
     report.outputs = {v.name: _shape(v) for v in graph.output}
 
     # 形状推断能查出"某一维推不出来"，这类图在端侧可能直接拒绝加载

@@ -98,9 +98,7 @@ class ObsContract:
         """按段拆开观测。返回结果是视图，不复制内存。"""
         obs = np.asarray(obs)
         if obs.shape[-1] != self.total_dim:
-            raise ValueError(
-                f"观测末维应为 {self.total_dim}，实际 {obs.shape[-1]}"
-            )
+            raise ValueError(f"观测末维应为 {self.total_dim}，实际 {obs.shape[-1]}")
         return {s.name: obs[..., self.index(s.name)] for s in self.segments}
 
     def concat(self, parts: Mapping[str, np.ndarray]) -> np.ndarray:
@@ -168,9 +166,7 @@ def make_obs_contract(n_dof: int) -> ObsContract:
     if n_dof <= 0:
         raise ValueError(f"n_dof 必须为正，得到 {n_dof}")
 
-    per_joint = tuple(
-        ObsSegment(s.name, n_dof, s.description) for s in _PER_JOINT_SEGMENTS
-    )
+    per_joint = tuple(ObsSegment(s.name, n_dof, s.description) for s in _PER_JOINT_SEGMENTS)
     return ObsContract(segments=_BASE_SEGMENTS + per_joint)
 
 

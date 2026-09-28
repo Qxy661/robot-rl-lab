@@ -106,12 +106,15 @@ def test_dict_field_coerces_value_types():
 
 def test_overrides_parse_scalar_types():
     """命令行传进来的都是字符串，要按目标类型还原。"""
-    data = apply_overrides({}, [
-        "train.num_envs=128",
-        "ppo.lr_actor=1e-4",
-        "obs.use_obs_noise=false",
-        "env.robot=go2",
-    ])
+    data = apply_overrides(
+        {},
+        [
+            "train.num_envs=128",
+            "ppo.lr_actor=1e-4",
+            "obs.use_obs_noise=false",
+            "env.robot=go2",
+        ],
+    )
     assert data["train"]["num_envs"] == 128
     assert isinstance(data["train"]["num_envs"], int)
     assert data["ppo"]["lr_actor"] == pytest.approx(1e-4)
@@ -141,9 +144,9 @@ def test_deep_merge_prefers_override_and_keeps_siblings():
     merged = deep_merge(base, over)
 
     assert merged["env"]["robot"] == "go2"
-    assert merged["env"]["control_dt"] == 0.02   # 同级字段不丢
-    assert merged["train"]["num_envs"] == 64    # 未涉及的子树原样保留
-    assert base["env"]["robot"] == "g1"         # 不修改入参
+    assert merged["env"]["control_dt"] == 0.02  # 同级字段不丢
+    assert merged["train"]["num_envs"] == 64  # 未涉及的子树原样保留
+    assert base["env"]["robot"] == "g1"  # 不修改入参
 
 
 # ---------------------------------------------------------------------------

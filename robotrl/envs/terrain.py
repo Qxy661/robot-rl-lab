@@ -62,9 +62,7 @@ def apply_terrain(
         "stairs": _build_stairs,
     }
     if config.kind not in builders:
-        raise ValueError(
-            f"未知地形 {config.kind!r}，可用：{sorted(builders)}"
-        )
+        raise ValueError(f"未知地形 {config.kind!r}，可用：{sorted(builders)}")
 
     _remove_existing_ground(scene)
     builders[config.kind](scene, config, rng)
@@ -75,7 +73,9 @@ def apply_terrain(
 # ---------------------------------------------------------------------------
 
 
-def _build_flat(scene: mujoco.MjSpec, config: TerrainConfig, rng: np.random.Generator | None) -> None:
+def _build_flat(
+    scene: mujoco.MjSpec, config: TerrainConfig, rng: np.random.Generator | None
+) -> None:
     """平地。尺寸取自配置，比 Menagerie 自带的 10x10 更容易按需收缩。"""
     _add_ground_plane(scene, config, name="terrain_flat")
 
@@ -152,7 +152,9 @@ def _build_stairs(
     # 顶上加一段平台。没有它，走到最后一级的尽头就是悬崖，策略得在"上楼梯"
     # 之外再学一个"别掉下去"，两件事混在一起训不出来。
     landing_top = config.num_steps * config.step_height
-    landing_len = config.terrain_size[0] / 2.0 - _STAIRS_RUN_UP - config.num_steps * config.step_width
+    landing_len = (
+        config.terrain_size[0] / 2.0 - _STAIRS_RUN_UP - config.num_steps * config.step_width
+    )
     if landing_len > 0:
         x_center = _STAIRS_RUN_UP + config.num_steps * config.step_width + landing_len / 2.0
         body = scene.worldbody.add_body(name="terrain_stairs_landing", pos=[x_center, 0.0, 0.0])

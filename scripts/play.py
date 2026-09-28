@@ -49,8 +49,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--episodes", type=int, default=5)
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--max-seconds", type=float, default=60.0, help="单个回合的最长播放秒数")
-    p.add_argument("--command", type=float, nargs=3, default=None, metavar=("VX", "VY", "YAW"),
-                   help="固定速度指令；不给则由任务自己采样")
+    p.add_argument(
+        "--command",
+        type=float,
+        nargs=3,
+        default=None,
+        metavar=("VX", "VY", "YAW"),
+        help="固定速度指令；不给则由任务自己采样",
+    )
     return p.parse_args(argv)
 
 
@@ -67,7 +73,8 @@ def _load_actuator(args: argparse.Namespace, cfg, env):
         return (lambda obs: engine.infer(np.asarray(obs, dtype=np.float32).ravel())), engine
 
     checkpoint = (
-        Path(args.checkpoint) if args.checkpoint is not None
+        Path(args.checkpoint)
+        if args.checkpoint is not None
         else latest_checkpoint(Path(args.run_dir or cfg.train.run_dir))
     )
     policy = build_policy(cfg, env)

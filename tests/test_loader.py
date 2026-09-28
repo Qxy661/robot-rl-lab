@@ -250,9 +250,7 @@ def test_servo_targets_are_clamped_to_joint_range(name):
     for actuator_id in robot.actuator_ids:
         joint_id = int(model.actuator_trnid[actuator_id][0])
         assert model.actuator_ctrllimited[actuator_id]
-        assert np.allclose(
-            model.actuator_ctrlrange[actuator_id], model.jnt_range[joint_id]
-        )
+        assert np.allclose(model.actuator_ctrlrange[actuator_id], model.jnt_range[joint_id])
 
 
 @needs_models
@@ -295,13 +293,8 @@ def test_g1_holds_exactly_the_arms():
     robot = load_robot(spec)
     model = robot.model
 
-    held_names = {
-        _joint_name_of(model, int(a))
-        for a in robot.held_actuator_ids
-    }
-    arm_names = {
-        n for n in held_names if "shoulder" in n or "elbow" in n or "wrist" in n
-    }
+    held_names = {_joint_name_of(model, int(a)) for a in robot.held_actuator_ids}
+    arm_names = {n for n in held_names if "shoulder" in n or "elbow" in n or "wrist" in n}
     assert held_names == arm_names
     assert len(held_names) == 14
 
@@ -345,6 +338,7 @@ def test_held_targets_come_from_keyframe():
 @pytest.mark.slow
 def test_mutate_hook_runs_before_compile():
     """环境层靠这个钩子插地形，所以钩子必须在编译前生效。"""
+
     def insert_terrain(mj_spec):
         body = mj_spec.worldbody.add_body(name="terrain_body", pos=[0, 0, 0])
         body.add_geom(

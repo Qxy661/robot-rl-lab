@@ -125,9 +125,11 @@ class RobotSpec:
     @property
     def action_scale_array(self) -> np.ndarray:
         """(n_dof,) 的缩放向量，标量输入会被广播成向量。"""
-        return np.full(self.n_dof, self.action_scale, dtype=np.float64) \
-            if isinstance(self.action_scale, (int, float)) \
+        return (
+            np.full(self.n_dof, self.action_scale, dtype=np.float64)
+            if isinstance(self.action_scale, (int, float))
             else np.asarray(self.action_scale, dtype=np.float64)
+        )
 
 
 # --------------------------------------------------------------------------

@@ -29,6 +29,7 @@ _TERMINATION_REGISTRY: dict[str, TerminationFn] = {}
 
 def register_termination(name: str) -> Callable[[TerminationFn], TerminationFn]:
     """把函数注册为具名终止条件。"""
+
     def decorator(fn: TerminationFn) -> TerminationFn:
         if name in _TERMINATION_REGISTRY and _TERMINATION_REGISTRY[name] is not fn:
             raise ValueError(f"终止条件 {name!r} 已被注册，不能覆盖")
