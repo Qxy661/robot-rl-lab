@@ -1,0 +1,47 @@
+# G1 速度跟踪 · 最小预设（复现 README 里那组基准数字用的就是它）
+#
+# 它和 g1_velocity.yaml 的关系：**除了训练规模，其余逐项相同**。这不是偷懒抄一遍，
+# 而是必须的——策略是从随机初始化的网络学出来的，只要 rewards/ppo/events 里任何
+# 一项不同，训出来的权重就不同，README 里那份回测（平均回报、动作 MAE、KL）也
+# 就不再对应。所以这个文件是"同一份配方的小份装"，不是另一份配方。
+#
+# 要看正式训练怎么配，读 g1_velocity.yaml；它俩的注释不重复，差异只在这里：
+#
+#   num_envs         64 → 16      纯 CPU 上并行度就是核数，冒烟不需要那么多
+#   total_timesteps  20M → 8192    6 秒跑完，够把采样/优势/更新/存档走一遍
+#   run_dir          runs/g1_velocity → runs/g1_smoke
+#
+# 一句话说清它的定位：**它产出的策略是"能站住 1.5 秒"，不是"会走"**。README 里
+# 的所有性能数字（体积、延迟、回测回报）都出自这份策略，所以那些数字证明的是
+# 链路可复现，不是策略性能。
+
+env:
+  robot: g1
+  task: velocity
+
+events:
+  push_interval_steps: [250, 500]
+
+# 奖励只写偏离项，其余沿用任务默认权重（robotrl/envs/tasks/velocity.py）。
+reward:
+  scales:
+    base_height: -15.0
+
+train:
+  algo: ppo
+  num_envs: 16
+  # 纯 CPU 上唯一能拿到的加速就是多进程——MuJoCo 单步无法多线程化。
+  vec_backend: subprocess
+  total_timesteps: 8_192
+  run_dir: runs/g1_smoke
+  # 8192 步只够跑二十来轮迭代，到不了评估与存档的间隔。保持与正式预设一致而不是
+  # 调密：这两个间隔会改变评估占用的步数，进而影响权重。
+  eval_interval: 100
+  save_interval: 100
+
+ppo:
+  # 人形的价值函数比四足难拟合得多，训练中 KL 冲高的频率也高。actor 学习率降到
+  # 1e-4；critic 保持 1e-3 不动——两者的拟合难度本来就不一样，没必要一起降。
+  lr_actor: 1.0e-4
+  # 一个 mini batch 里的有效样本本来就少，切细一点能让每次更新的梯度更稳。
+  num_mini_batches: 8

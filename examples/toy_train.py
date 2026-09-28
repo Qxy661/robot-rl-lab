@@ -31,7 +31,7 @@ from robotrl.deploy.export_onnx import export_policy
 from robotrl.deploy.quantize import collect_calibration_data, quantize
 from robotrl.envs import make
 from robotrl.envs.base_env import BaseEnv
-from robotrl.utils.torch_runtime import describe
+from robotrl.utils.torch_runtime import describe, seed_torch
 
 # ---------------------------------------------------------------------------
 # 输出格式
@@ -62,6 +62,10 @@ def build(args: argparse.Namespace) -> tuple[list[BaseEnv], ActorCritic, Config]
     cfg = Config()
     cfg.env.max_episode_steps = args.max_episode_steps
     cfg.env.seed = args.seed
+
+    # 建策略之前定住 torch 的随机源，否则每次跑出来的权重都不一样，
+    # "跑一遍就有"的基准就不成立。见 robotrl/utils/torch_runtime.seed_torch。
+    seed_torch(cfg.env.seed)
 
     envs = [make("toy", config=cfg) for _ in range(args.num_envs)]
     first = envs[0]

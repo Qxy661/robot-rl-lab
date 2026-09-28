@@ -49,7 +49,7 @@ from robotrl.contracts import (
 from robotrl.envs.base_env import BaseEnv, Obs
 from robotrl.envs.events import DomainRandomizer
 from robotrl.envs.managers import RewardManager, TerminationManager
-from robotrl.envs.terrain import TERRAIN_GEOM_GROUP, apply_terrain
+from robotrl.envs.terrain import TERRAIN_GEOM_GROUP, TERRAIN_NAME_PREFIX, apply_terrain
 
 #: 各形态的默认站姿机身高度（米）。复位时把机身摆到这里，也是高度保持奖励的
 #: 目标值。之所以按形态给默认值而不是塞进 RobotSpec，是因为"站多高"取决于
@@ -344,12 +344,45 @@ class MujocoEnv(BaseEnv):
         # 没有足端的形态（POINT）没有接触信息可给 critic，关掉特权观测。
         self._use_privileged = bool(self.obs_config.use_privileged_critic) and self.num_feet > 0
 
+        self._check_terrain_group_is_exclusive(model)
         terrain_groups = np.zeros(6, dtype=np.uint8)
         terrain_groups[TERRAIN_GEOM_GROUP] = 1
         self._terrain_geomgroup = terrain_groups
         # mj_ray 的输出缓冲区，就地复用，免得每个采样点分配两块小数组。
         self._ray_geomid = np.zeros(1, dtype=np.int32)
         self._ray_normal = np.zeros(3, dtype=np.float64)
+
+    @staticmethod
+    def _check_terrain_group_is_exclusive(model: mujoco.MjModel) -> None:
+        """确认地形组里只有地形自己的几何，否则当场报错。
+
+        这条检查存在的理由是它挡的那个 bug 不会以任何显眼的方式暴露：地形和
+        机器人的碰撞几何挤在同一组时，地形高度射线会先打中机器人自己，把一个
+        纯属虚构的高度喂给 critic。平地（真值处处为 0）上实测能读回 1.32 米，
+        训练照样跑、损失照样降，只是 critic 的输入里混进了一个跟着姿态变化的
+        假信号。这种事后极难定位，所以宁可现在就炸。
+
+        Menagerie 的约定是碰撞几何放 group 3（地形组曾经就是 3），这里是防止
+        将来换一种把几何放进地形组的形态。
+        """
+        intruders = []
+        for geom in range(model.ngeom):
+            if int(model.geom_group[geom]) != TERRAIN_GEOM_GROUP:
+                continue
+            name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom) or ""
+            if not name.startswith(TERRAIN_NAME_PREFIX):
+                body = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, model.geom_bodyid[geom])
+                intruders.append(
+                    f"{name or f'<未命名 geom {geom}>'}（属于 {body or '未命名 body'}）"
+                )
+
+        if intruders:
+            raise ValueError(
+                f"geom group {TERRAIN_GEOM_GROUP} 是地形独占的，却混进了非地形几何："
+                f"{'、'.join(intruders)}。地形高度射线只按 group 过滤，同组就会被误命中，"
+                f"读回机器人自身几何的距离冒充地面高度。请把 TERRAIN_GEOM_GROUP "
+                f"（robotrl/envs/terrain.py）改成一个该形态没有用到的组。"
+            )
 
     @staticmethod
     def _leaf_bodies(model: mujoco.MjModel) -> list[int]:
@@ -529,6 +562,16 @@ class MujocoEnv(BaseEnv):
     def reward_terms(self) -> dict[str, float]:
         """上一步各奖励项的原始值（未乘权重），用于日志。"""
         return self._last_reward_terms
+
+    @property
+    def base_body_id(self) -> int:
+        """机身 body 在模型里的编号。
+
+        给的是编号而不是名字：模型里这个名字由形态决定（G1 是 `pelvis`，
+        Go2 是 `base`），调用方不该为了用一次相机跟踪就去拼这个名字。
+        录制回放要把镜头锁在机身上，走的就是这里。
+        """
+        return self._base_body_id
 
     def base_position(self) -> np.ndarray:
         """机身位置，世界系。"""

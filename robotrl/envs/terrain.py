@@ -22,7 +22,28 @@ import numpy as np
 from robotrl.configs.schema import TerrainConfig
 
 #: 地形几何独占的 geom group。射线投射靠它把机器人本体排除在外。
-TERRAIN_GEOM_GROUP = 3
+#:
+#: 这个值曾经是 3，那是错的。MuJoCo Menagerie 的约定是**视觉几何放 group 2、
+#: 碰撞几何放 group 3**，所以地形和机器人自己的碰撞体挤在同一组里，射线过滤
+#: 根本排除不掉本体：平地（真值处处为 0）上实测 9 条射线里有 1 条打中 G1 的
+#: torso_link，读回 1.32 米——这个数完全是机器人自身几何到射线的距离，却被
+#: 当成"机身下方的地形高度"喂给了 critic。三个形态都中招（H1 读到 1.80 米，
+#: Go2 读到 0.50 米）。
+#:
+#: 现在选 1：三个形态都只用到 group 2 和 3，group 0/1/4/5 是空的。选 1 而不是 0
+#: 是因为 0 是"默认组"，将来往场景里加东西的人多半会顺手用 0。另外 group 1
+#: 在 MjvOption 的默认设置里是**渲染开启**的，所以地面顺带恢复了可见——在那之前
+#: 回放窗口里机器人是悬浮在一片蓝色里的，看不出它站在哪。
+#:
+#: 代价是这条不变式无法从代码本身保证：换一个把碰撞体放在 group 1 的机器人就会
+#: 静默复现这个 bug。所以 MujocoEnv 构造时会当场核对地形组是不是独占了，见
+#: `_check_terrain_group_is_exclusive`。
+TERRAIN_GEOM_GROUP = 1
+
+#: 地形几何名字的统一前缀。MujocoEnv 构造时靠它确认地形组里没有混进机器人的
+#: 几何——这条检查是上面那个 bug 唯一的防线，见
+#: `MujocoEnv._check_terrain_group_is_exclusive`。
+TERRAIN_NAME_PREFIX = "terrain_"
 
 #: 场景里原有的地面名字。注入地形前先删掉，否则会和注入的地面叠在一起，
 #: 接触点倍增、摩擦系数取两者较大值，物理变得难以解释。

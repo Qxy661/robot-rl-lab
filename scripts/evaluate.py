@@ -124,19 +124,23 @@ def main(argv: list[str] | None = None) -> int:
     header("结论")
     info(report.summary())
     if not report.kl_ok:
+        # 不建议具体换成哪种量化：哪一种更抗掉点取决于模型和量化器，实测才知道。
+        # 这里只说清"该换方式而不是硬上"，给方向不给结论。
         warn(
             f"动作分布 KL 超过阈值 {kl_threshold}，量化掉点过多。"
-            "可以试：改 --mode static 走静态量化，或退回 FP32"
+            "换一种量化方式（--mode）重测，或退回 FP32；别把这个结果当可接受的近似"
         )
 
     payload = report.to_dict()
     payload["robot"] = cfg.env.robot
     payload["task"] = cfg.env.task
-    report_path = dump_json(ensure_dir(exported) / "backtest.json", payload)
+    # 文件名带上量化方式：dynamic 和 static 是并列的两份结果，不是"当前那一份"。
+    # 用同一个名字的话后跑的那次会把先跑的覆盖掉，而 README 里两张表都要引用。
+    report_path = dump_json(ensure_dir(exported) / f"backtest_{mode}.json", payload)
     info(f"报告 {report_path}")
 
     if args.markdown:
-        md_path = exported / "backtest.md"
+        md_path = exported / f"backtest_{mode}.md"
         md_path.write_text(
             f"# {cfg.env.robot}-{cfg.env.task} 量化回测\n\n"
             f"控制频率 {1 / cfg.env.control_dt:.0f} Hz，{episodes} 回合，"

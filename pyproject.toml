@@ -24,6 +24,11 @@ deploy = [
     "onnx>=1.15",
     "onnxruntime>=1.17",
 ]
+# 录制回放 GIF（scripts/play.py --record）。单独分组的理由和 deploy 一样：
+# 它是可选功能，不录素材的人不该为此多装一个图像库。
+record = [
+    "pillow>=10.0",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",

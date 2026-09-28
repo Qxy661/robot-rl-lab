@@ -19,9 +19,10 @@ from mini_robot import (
 )
 
 from robotrl.configs.schema import Config, TerrainConfig
+from robotrl.envs import make
 from robotrl.envs import mujoco_env as mujoco_env_module
 from robotrl.envs.mujoco_env import MujocoEnv
-from robotrl.envs.terrain import TERRAIN_GEOM_GROUP
+from robotrl.envs.terrain import TERRAIN_GEOM_GROUP, TERRAIN_NAME_PREFIX
 
 
 def geom_names(model: mujoco.MjModel) -> list[str]:
@@ -148,11 +149,15 @@ def test_unknown_terrain_kind_is_rejected():
 # ---------------------------------------------------------------------------
 
 
-def test_terrain_geoms_live_in_their_own_group():
-    """地形几何必须独占一个 geom group。
+def test_terrain_group_holds_terrain_geoms_and_nothing_else():
+    """地形几何必须**独占**一个 geom group。
 
     机身下方的高度采样靠竖直射线，射线只认 geomgroup 这一个过滤器；不独占的话，
-    射线会先打到机器人自己的脚，采样出来的"地形高度"永远等于脚的高度。
+    射线会先打到机器人自己，采样出来的"地形高度"是机器人几何的距离。
+
+    这里两个方向都要查。这条用例原来只查了"地形几何都在这个组里"，而那是单向的：
+    当时地形组是 3，Menagerie 的碰撞几何也在 3，机器人的几何全都违反了独占性，
+    用例照样全绿。所以下面那句"组里除地形外没有别的几何"才是真正咬人的一半。
     """
     for kind in ("flat", "rough", "stairs"):
         model = compile_with_terrain(TerrainConfig(kind=kind))
@@ -160,11 +165,39 @@ def test_terrain_geoms_live_in_their_own_group():
             geom
             for geom in range(model.ngeom)
             if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom) or "").startswith(
-                "terrain_"
+                TERRAIN_NAME_PREFIX
             )
         ]
+        intruders = [
+            geom
+            for geom in range(model.ngeom)
+            if model.geom_group[geom] == TERRAIN_GEOM_GROUP and geom not in terrain_geoms
+        ]
+
         assert terrain_geoms
         assert all(model.geom_group[geom] == TERRAIN_GEOM_GROUP for geom in terrain_geoms)
+        assert not intruders
+
+
+def test_robot_geoms_in_the_terrain_group_are_rejected_at_construction():
+    """机器人的几何占了地形组时，构造环境必须当场报错。
+
+    这是刻意把 Menagerie 那个坑复原出来：真形态的碰撞几何在 group 3，而地形组
+    曾经也是 3。mini 形态的几何默认在 group 0，所以这个冲突不会自己出现——不手工
+    制造一次，那条不变式就没有任何用例在守。
+    """
+    model = compile_with_terrain(TerrainConfig(kind="flat"))
+    foot = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "foot_geom")
+    assert foot >= 0
+    model.geom_group[foot] = TERRAIN_GEOM_GROUP
+
+    with pytest.raises(ValueError, match="地形独占"):
+        MujocoEnv(
+            spec=MINI_SPEC,
+            robot_model=build_robot_model(model=model),
+            init_base_height=MINI_BASE_HEIGHT,
+            seed=0,
+        )
 
 
 def test_height_sampling_hits_real_terrain():
@@ -219,6 +252,46 @@ def test_height_sampling_works_on_stairs():
     for height in heights:
         assert min(abs(height - top) for top in step_tops) < 0.02
     assert heights.max() == pytest.approx(0.4, abs=0.02)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("robot", ["G1", "H1", "Go2"])
+def test_real_robots_leave_the_terrain_group_free(robot):
+    """真实形态（Menagerie）的几何不占地形组，且平地上采样处处为 0。
+
+    这条用例是为一个真实踩过的坑写的：地形组原来是 3，而 Menagerie 把**碰撞
+    几何放在 group 3**，于是竖直射线会先打中机器人自己。平地真值处处为 0，
+    实测 G1 读回 1.32 m、H1 读回 1.80 m、Go2 读回 0.50 m——这些数字是机器人
+    自身几何到射线的距离，却被当成"机身下方的地形高度"喂给了 critic。
+
+    它当时没被发现，是因为内嵌的 mini 形态几何默认在 group 0，冲突不出现。
+    只有真形态才复现，所以这条必须在 slow 里、且必须真的去查组占用。
+    """
+    config = Config()
+    config.terrain.kind = "flat"
+    try:
+        env = make(f"{robot}-Velocity", config=config)
+    except (FileNotFoundError, NotImplementedError) as exc:
+        pytest.skip(f"模型或加载器未就绪：{exc}")
+
+    terrain_geoms = {
+        geom
+        for geom in range(env.model.ngeom)
+        if (mujoco.mj_id2name(env.model, mujoco.mjtObj.mjOBJ_GEOM, geom) or "").startswith(
+            TERRAIN_NAME_PREFIX
+        )
+    }
+    sharing = [
+        geom
+        for geom in range(env.model.ngeom)
+        if env.model.geom_group[geom] == TERRAIN_GEOM_GROUP and geom not in terrain_geoms
+    ]
+    assert not sharing, f"{robot} 有 {len(sharing)} 个几何和地形同组"
+
+    env.reset(seed=0)
+    heights = env.sample_terrain_heights(9)
+    assert heights == pytest.approx(np.zeros(9)), f"{robot} 在平地上读到了非零地形高度"
+    env.close()
 
 
 def test_robot_joints_survive_terrain_injection():

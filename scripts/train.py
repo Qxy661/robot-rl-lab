@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from robotrl.utils.config import config_to_dict, dump_yaml  # noqa: E402
+from robotrl.utils.torch_runtime import seed_torch  # noqa: E402
 from scripts._shared import (  # noqa: E402
     add_config_args,
     build_envs,
@@ -62,6 +63,12 @@ def main(argv: list[str] | None = None) -> int:
         f"控制 {1 / cfg.env.control_dt:.0f} Hz｜仿真 {1 / cfg.env.sim_dt:.0f} Hz｜回合上限 {cfg.env.max_episode_steps} 步"
     )
     info(f"产物目录 {run_dir}")
+
+    # 必须在 build_policy 之前。策略权重由 torch 的全局随机源初始化，不定种子
+    # 的话同一份配置跑两次会得到两个不同的策略，而且不报任何错——详见
+    # robotrl/utils/torch_runtime.seed_torch。
+    seed_torch(cfg.env.seed)
+    info(f"随机种子 {cfg.env.seed}")
 
     vec = build_envs(cfg)
     policy = build_policy(cfg, vec)

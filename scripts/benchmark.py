@@ -15,12 +15,17 @@
               决定，波动很大。样本太少时会给出提示。
   配对条件   两个模型必须用同一份输入、同样的预热与次数、同样的线程数。
               任何一项不一致，算出来的加速比就不成立。
+  固定到核   在大小核混合架构上，同一份模型换个逻辑核测，最小延迟能差 4 倍
+              （实测 0.0108 到 0.0436 ms）。不绑核的话进程会在核之间迁移，
+              待测的 15% 差异整个被淹掉，同一份模型能测出方向相反的两个结论。
+              默认先逐个核试一遍，绑到最快的那个，并把核号写进报告。
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -29,6 +34,12 @@ import numpy as np  # noqa: E402
 
 from robotrl.deploy.benchmark import compare_benchmark, sweep_threads  # noqa: E402
 from robotrl.deploy.engine import load_engine  # noqa: E402
+from robotrl.utils.cpu_affinity import (  # noqa: E402
+    affinity_supported,
+    cpu_count,
+    fastest_cpu,
+    pinned,
+)
 from scripts._shared import (  # noqa: E402
     add_config_args,
     dump_json,
@@ -68,7 +79,64 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--threads", type=int, nargs="+", default=[1], help="要测的线程数，可给多个")
     p.add_argument("--batch", type=int, default=1, help="批大小")
     p.add_argument("--sweep-batch", type=int, nargs="+", default=None, help="额外跑一组批大小扫描")
+    p.add_argument(
+        "--cpu",
+        default="auto",
+        help="绑到哪个逻辑核上测。auto=先逐个核试一遍取最快的；none=不绑（结果不可跨次比较）；也可以直接给核号",
+    )
     return p.parse_args(argv)
+
+
+def _resolve_cpu(
+    args: argparse.Namespace, probe
+) -> tuple[int | None, dict[int, float] | None, bool]:
+    """按 --cpu 决定绑哪个核，必要时先做一遍逐核试探。
+
+    Returns:
+        (要绑的核号或 None, 各核耗时, 是否成功绑上)。不绑核时前两项都是 None。
+
+    Note:
+        指定的核号超出范围时直接报错，不静默退回 auto——静默退回会让人以为
+        测的是自己指定的那个核，而报告里的核号又不会说谎，两处对不上时更难查。
+    """
+    if str(args.cpu).lower() == "none":
+        return None, None, False
+
+    if not affinity_supported():
+        warn("当前平台不支持设 CPU 亲和性，按不绑核测量：跨次运行的数字不可直接比较")
+        return None, None, False
+
+    if str(args.cpu).lower() == "auto":
+        total = cpu_count()
+        if total == 1:
+            return 0, None, True
+        info(f"逐核试探（{total} 个逻辑核）：先找出最快的一个，之后的测量都固定在它上面")
+        cpu, timings, ok = fastest_cpu(
+            probe,
+            repeats=7,
+            on_probe=lambda core, seconds: info(f"  CPU{core:<3d} {seconds * 1e3:.4f} ms"),
+        )
+        if not ok:
+            warn("绑核失败，按不绑核测量：跨次运行的数字不可直接比较")
+            return None, None, False
+        spread = max(timings.values()) / min(timings.values())
+        info(f"绑到最快的 CPU{cpu}（各核之间最快与最慢相差 {spread:.2f} 倍）")
+        if spread > 2.0:
+            # 差值这么大说明是大小核混合架构。不写出来，读者会以为 4 倍的差异
+            # 是某个模型比另一个快，而不是核本身不同。
+            warn(
+                f"逻辑核之间的性能相差 {spread:.1f} 倍，是大小核混合架构。绝对延迟是"
+                "所选这个核上的值，能迁移的结论只有两个模型的比值"
+            )
+        return cpu, timings, True
+
+    try:
+        cpu = int(args.cpu)
+    except ValueError:
+        raise SystemExit(f"--cpu 只接受 auto / none / 核号，得到 {args.cpu!r}") from None
+    if not 0 <= cpu < cpu_count():
+        raise SystemExit(f"--cpu {cpu} 超出范围，本机有 {cpu_count()} 个逻辑核")
+    return cpu, None, True
 
 
 def _sample(obs_dim: int, batch: int, seed: int = 7) -> np.ndarray:
@@ -111,9 +179,52 @@ def main(argv: list[str] | None = None) -> int:
         "warmup": args.warmup,
         "batch_size": args.batch,
         "obs_dim": obs_dim,
+        "mode": mode if has_int8 else None,
+        "cpu": None,
         "sweeps": {},
     }
 
+    # 逐核试探要真跑一次推理才有意义，所以探针取自 FP32 模型本身。用真实的
+    # 算子（而不是空转）是因为"哪个核快"依赖指令集：FP32 的 GEMM 和 INT8 的
+    # VNNI 内核在不同微架构上的相对快慢不一样。
+    with load_engine(fp32) as probe_engine:
+        probe_sample = _sample(obs_dim, 1)
+        probe_engine.warmup(args.warmup)
+
+        def probe() -> None:
+            probe_engine.infer(probe_sample)
+
+        cpu, timings, pinned_ok = _resolve_cpu(args, probe)
+
+    payload["cpu"] = cpu
+    if timings is not None:
+        payload["cpu_probe_ms"] = {str(k): v * 1e3 for k, v in timings.items()}
+    if not pinned_ok and cpu is not None:
+        warn("没能绑核，这次结果只能当参考")
+
+    with pinned(cpu) if cpu is not None else nullcontext():
+        _measure_all(args, payload, fp32, int8, has_int8, obs_dim)
+
+    # 同 evaluate.py：dynamic 和 static 是并列的两份结果，文件名必须区分开，
+    # 否则后跑的那次静默覆盖先跑的，README 的两列数字就只剩一列有原始报告。
+    suffix = mode if has_int8 else "fp32"
+    report_path = dump_json(ensure_dir(run_dir / "exported") / f"benchmark_{suffix}.json", payload)
+    header("完成")
+    info(f"报告 {report_path}")
+    if cpu is not None:
+        info(f"测量固定在 CPU{cpu}；报告里记了核号，换核或换机器后绝对值不可比，比值可比")
+    return 0
+
+
+def _measure_all(
+    args: argparse.Namespace,
+    payload: dict,
+    fp32: Path,
+    int8: Path,
+    has_int8: bool,
+    obs_dim: int,
+) -> None:
+    """跑完所有线程数与批大小的测量，结果写进 payload["sweeps"]。"""
     for threads in args.threads:
         header(f"延迟对比 · {threads} 线程 · batch {args.batch}")
         sample = _sample(obs_dim, args.batch)
@@ -175,11 +286,6 @@ def main(argv: list[str] | None = None) -> int:
                 }
             )
         payload["sweeps"]["batch_sweep"] = rows
-
-    report_path = dump_json(ensure_dir(run_dir / "exported") / "benchmark.json", payload)
-    header("完成")
-    info(f"报告 {report_path}")
-    return 0
 
 
 if __name__ == "__main__":
